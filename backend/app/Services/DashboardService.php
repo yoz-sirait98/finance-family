@@ -68,6 +68,31 @@ class DashboardService
             ->toArray();
     }
 
+    public function getExpenseByMember(int $userId, ?int $month = null, ?int $year = null): array
+    {
+        $month = $month ?? now()->month;
+        $year = $year ?? now()->year;
+
+        return Transaction::where('user_id', $userId)
+            ->where('type', 'expense')
+            ->whereMonth('transaction_date', $month)
+            ->whereYear('transaction_date', $year)
+            ->whereNotNull('member_id')
+            ->selectRaw('member_id, SUM(amount) as total')
+            ->groupBy('member_id')
+            ->with('member:id,name')
+            ->get()
+            ->map(function ($item, $index) {
+                $colors = ['#0d6efd', '#6f42c1', '#d63384', '#fd7e14', '#20c997', '#0dcaf0'];
+                return [
+                    'member' => $item->member->name ?? 'Unknown',
+                    'color' => $colors[$index % count($colors)],
+                    'total' => (float) $item->total,
+                ];
+            })
+            ->toArray();
+    }
+
     public function getIncomeVsExpense(int $userId, ?int $year = null): array
     {
         $year = $year ?? now()->year;

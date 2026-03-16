@@ -33,6 +33,11 @@ class DashboardController extends Controller
                 $request->input('month'),
                 $request->input('year')
             ),
+            'expense-by-member' => $this->dashboardService->getExpenseByMember(
+                $userId,
+                $request->input('month'),
+                $request->input('year')
+            ),
             'income-vs-expense' => $this->dashboardService->getIncomeVsExpense(
                 $userId,
                 $request->input('year')
