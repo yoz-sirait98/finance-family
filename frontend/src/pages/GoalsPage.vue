@@ -1,0 +1,204 @@
+<template>
+  <div class="goals-page fade-in">
+    <div class="page-header d-flex justify-content-between align-items-center">
+      <div><h4>Saving Goals</h4><p>Track your saving targets</p></div>
+      <button class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Add Goal</button>
+    </div>
+    <div class="row g-3">
+      <div v-for="g in goals" :key="g.id" class="col-md-6 col-lg-4">
+        <div class="stat-card">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <h6 class="fw-bold mb-0">{{ g.name }}</h6>
+              <small class="text-muted">{{ g.deadline || 'No deadline' }}</small>
+            </div>
+            <span class="badge" :class="g.status === 'active' ? 'bg-primary' : g.status === 'completed' ? 'bg-success' : 'bg-secondary'">
+              {{ g.status }}
+            </span>
+          </div>
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <span>{{ g.current_amount_formatted }}</span>
+            <span>{{ g.target_amount_formatted }}</span>
+          </div>
+          <div class="progress mb-2" style="height:10px">
+            <div class="progress-bar bg-primary" :style="{ width: g.progress_percentage + '%' }"></div>
+          </div>
+          <div class="small text-muted mb-3">{{ g.progress_percentage }}% complete</div>
+          <div class="d-flex gap-1">
+            <button v-if="g.status === 'active'" class="btn btn-sm btn-primary-gradient" @click="openContribute(g)"><i class="bi bi-plus-circle me-1"></i>Contribute</button>
+            <button class="btn btn-sm btn-outline-primary" @click="openEdit(g)"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(g)"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div v-if="showModal" class="vue-modal-backdrop" @mousedown.self="showModal = false">
+      <div class="vue-modal">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ editingId ? 'Edit' : 'Add' }} Goal</h5>
+          <button type="button" class="btn-close" @click="showModal = false"></button>
+        </div>
+        <form @submit.prevent="save">
+          <div class="modal-body">
+            <div v-if="formError" class="alert alert-danger small">{{ formError }}</div>
+            <div class="mb-3">
+              <label class="form-label">Name</label>
+              <input v-model="form.name" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Target Amount (Rp)</label>
+              <input v-model.number="form.target_amount" type="number" class="form-control" min="1" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Deadline</label>
+              <input v-model="form.deadline" type="date" class="form-control" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary-gradient">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Contribute Modal -->
+    <div v-if="showContributeModal" class="vue-modal-backdrop" @mousedown.self="showContributeModal = false">
+      <div class="vue-modal">
+        <div class="modal-header">
+          <h5 class="modal-title">Contribute to {{ contributingGoal?.name }}</h5>
+          <button type="button" class="btn-close" @click="showContributeModal = false"></button>
+        </div>
+        <form @submit.prevent="doContribute">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Amount (Rp)</label>
+              <input v-model.number="contributeForm.amount" type="number" class="form-control" min="1" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Note</label>
+              <input v-model="contributeForm.note" class="form-control" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="showContributeModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary-gradient">Contribute</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div v-if="showDeleteModal" class="vue-modal-backdrop" @mousedown.self="showDeleteModal = false">
+      <div class="vue-modal" style="max-width:420px">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Delete Goal</h5>
+          <button type="button" class="btn-close" @click="showDeleteModal = false"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-0">Are you sure you want to delete the goal <strong>{{ deletingItem?.name }}</strong>? This cannot be undone.</p>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
+          <button class="btn btn-danger" @click="doDelete">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { goalService } from '../services/goalService';
+import { useToastStore } from '../stores/toast';
+
+const goals = ref([]);
+const editingId = ref(null);
+const form = ref({ name: '', target_amount: 0, deadline: '' });
+const formError = ref('');
+
+const showModal = ref(false);
+const showContributeModal = ref(false);
+const showDeleteModal = ref(false);
+
+const contributingGoal = ref(null);
+const contributeForm = ref({ amount: 0, note: '' });
+const deletingItem = ref(null);
+const toast = useToastStore();
+
+async function fetchData() {
+  const { data } = await goalService.list();
+  goals.value = data.data;
+}
+
+function openCreate() {
+  editingId.value = null;
+  form.value = { name: '', target_amount: 0, deadline: '' };
+  formError.value = '';
+  showModal.value = true;
+}
+
+function openEdit(g) {
+  editingId.value = g.id;
+  form.value = { name: g.name, target_amount: g.target_amount, deadline: g.deadline_raw || '' };
+  formError.value = '';
+  showModal.value = true;
+}
+
+function openContribute(g) {
+  contributingGoal.value = g;
+  contributeForm.value = { amount: 0, note: '' };
+  showContributeModal.value = true;
+}
+
+async function save() {
+  formError.value = '';
+  try {
+    if (editingId.value) {
+      await goalService.update(editingId.value, form.value);
+      toast.success('Goal updated successfully');
+    } else {
+      await goalService.create(form.value);
+      toast.success('Goal created successfully');
+    }
+    showModal.value = false;
+    fetchData();
+  } catch(e) {
+    formError.value = e.response?.data?.message || 'Error occurred';
+    toast.error(formError.value);
+  }
+}
+
+async function doContribute() {
+  try {
+    await goalService.contribute(contributingGoal.value.id, contributeForm.value);
+    toast.success('Contribution added successfully');
+    showContributeModal.value = false;
+    fetchData();
+  } catch(e) {
+    toast.error(e.response?.data?.message || 'Error contributing');
+  }
+}
+
+function confirmDelete(g) {
+  deletingItem.value = g;
+  showDeleteModal.value = true;
+}
+
+async function doDelete() {
+  if (!deletingItem.value) return;
+  try {
+    await goalService.delete(deletingItem.value.id);
+    toast.success('Goal deleted successfully');
+    showDeleteModal.value = false;
+    deletingItem.value = null;
+    fetchData();
+  } catch(e) {
+    toast.error(e.response?.data?.message || 'Failed to delete goal');
+  }
+}
+
+onMounted(fetchData);
+</script>

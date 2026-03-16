@@ -1,0 +1,6 @@
+import api from './api';
+
+export const dashboardService = {
+  summary: (params) => api.get('/dashboard/summary', { params }),
+  charts: (type, params) => api.get(`/dashboard/charts/${type}`, { params }),
+};
