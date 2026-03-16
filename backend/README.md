@@ -1,59 +1,65 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Family Finance Backend API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This directory contains the REST API for the Family Finance Management System, built with **Laravel 11** and **PHP 8.3**.
 
-## About Laravel
+## Requirements
+*   PHP 8.3 or higher
+*   Composer
+*   MySQL 8.0+
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Local Setup
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1.  **Install dependencies:**
+    ```bash
+    composer install
+    ```
+2.  **Environment Setup:**
+    Duplicate `.env.example` as `.env`.
+    Configure your database credentials:
+    ```env
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_PORT=3306
+    DB_DATABASE=finance_family
+    DB_USERNAME=root
+    DB_PASSWORD=
+    ```
+3.  **Generate app key:**
+    ```bash
+    php artisan key:generate
+    ```
+4.  **Run Migrations and Seeders:**
+    This application requires base categories to function nicely. The seeder also provides a demo family.
+    ```bash
+    php artisan migrate
+    php artisan db:seed
+    ```
+5.  **Start the local server:**
+    ```bash
+    php artisan serve --port=8000
+    ```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Architecture Details
 
-## Learning Laravel
+*   **Authentication**: We use Laravel Sanctum issuing plain-text Bearer Tokens. All routes under `/api/*` expect this token except `/api/auth/login` and `/api/auth/register`.
+*   **Services Pattern**: Thick controllers are avoided. Business logic, specifically for cascading account balance recalculations (`AccountBalanceService`), dual-entry transfers (`TransactionService`), and deadline checking (`RecurringTransactionService`) exist in the `app/Services` folder.
+*   **Localization**: The app defaults to `Asia/Jakarta` timezone and assumes IDR format logic for monetary values.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Scheduled Tasks
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The application has a background job that automatically inserts returning transactions that are due. For production, ensure you add the Laravel scheduler to your server's cron tab:
 
-## Laravel Sponsors
+```bash
+* * * * * cd /path-to-your-project/backend && php artisan schedule:run >> /dev/null 2>&1
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Available API Endpoint Groups
+*   `POST /auth/*`: Login, Register, Logout, Password changes
+*   `CRUD /members`: Family member profiles
+*   `CRUD /accounts`: Bank/Cash balances
+*   `CRUD /categories`: Income/Expense labels
+*   `CRUD /transactions`: Core ledger (Includes `POST /transactions/transfer`)
+*   `CRUD /budgets`: Monthly budget caps and alerts
+*   `CRUD /goals`: Target savings and contributions
+*   `CRUD /recurring-transactions`: Automation rules
+*   `GET /dashboard/*`: Aggregated UI metric endpoints
