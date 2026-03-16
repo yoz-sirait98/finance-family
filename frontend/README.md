@@ -1,6 +1,6 @@
-# Family Finance Frontend Web App
+# Aplikasi Web Frontend Family Finance
 
-This directory contains the Single Page Application (SPA) dashboard for the Family Finance system, built with **Vue 3 (Composition API)** and **Vite**.
+Direktori ini berisi dashboard **Single Page Application (SPA)** untuk sistem Family Finance, yang dibangun menggunakan **Vue 3 (Composition API)** dan **Vite**.
 
 ## Technology Stack
 *   **Framework**: Vue 3 (Script Setup syntax)
@@ -8,36 +8,51 @@ This directory contains the Single Page Application (SPA) dashboard for the Fami
 *   **Routing**: Vue Router
 *   **State Management**: Pinia
 *   **HTTP Client**: Axios
-*   **UI/Styling**: Standard CSS leveraging Bootstrap 5 grid/utility classes
-*   **Data Visualization**: Chart.js wrapped with `vue-chartjs`
+*   **UI/Styling**: CSS standar yang memanfaatkan grid dan utility classes dari Bootstrap 5
+*   **Data Visualization**: Chart.js yang dibungkus dengan `vue-chartjs`
 
-## Local Development Setup
+## Setup Pengembangan Lokal
 
 1.  **Install dependencies:**
-    Ensure you are using a recent version of Node.js (v18+).
+    Pastikan Anda menggunakan versi Node.js terbaru (v18+).
+
     ```bash
     npm install
     ```
-2.  **Environment Settings:**
-    Create a `.env` file at the root of `frontend/` to point to the Laravel Backend API.
+
+2.  **Pengaturan Environment:**
+    Buat file `.env` pada root direktori `frontend/` untuk menunjuk ke Laravel Backend API.
+
     ```env
     VITE_API_URL=http://localhost:8000/api
     ```
-3.  **Start the dev server:**
+
+3.  **Menjalankan dev server:**
+
     ```bash
     npm run dev
     ```
-    The application will usually boot at `http://localhost:5173`.
 
-## Architecture & Design Notes
+    Aplikasi biasanya akan berjalan di `http://localhost:5173`.
 
-### Vue-Native Event Handling
-This application intentionally **does not use Bootstrap Javascript** (`bootstrap.bundle.js` or jQuery). 
+## Catatan Arsitektur & Desain
 
-Because Vue's Virtual DOM controls the rendering lifecycle, using imperative vanilla JS plugins often leads to race conditions and "zombie" event listeners. All modals, dropdowns, alerts, and toasts inside this application are built entirely with native Vue directives (`v-if`, `v-show`, `@click`, `.self` modifiers) and custom CSS.
+### Penanganan Event Native Vue
+Aplikasi ini secara sengaja **tidak menggunakan Bootstrap Javascript** (`bootstrap.bundle.js` atau jQuery).
 
-### Real-Time Toast Notifications
-Feedback for Create, Update, and Delete operations is provided by a global, custom Toast Notification system, managed centrally by the `toast.js` Pinia store and the `AppToast.vue` component at the root layer.
+Karena Virtual DOM milik Vue mengontrol siklus render, penggunaan plugin JavaScript imperatif sering menyebabkan race condition dan event listener yang tertinggal ("zombie"). Semua modal, dropdown, alert, dan toast dalam aplikasi ini dibangun sepenuhnya menggunakan directive native Vue (`v-if`, `v-show`, `@click`, modifier `.self`) serta CSS kustom.
+
+### Notifikasi Toast Real-Time
+Umpan balik untuk operasi Create, Update, dan Delete disediakan melalui sistem **Toast Notification global** yang dibuat secara kustom.
+
+Sistem ini dikelola secara terpusat oleh store Pinia `toast.js` dan komponen `AppToast.vue` pada layer root aplikasi.
 
 ### Global State (Pinia)
-The standard pattern used here involves local component state for reactive form data, but global Pinia store state specifically for Authentication (`auth.js`) and Toasts (`toast.js`). API calls happen sequentially within the components themselves using abstracted Axios service layers (`frontend/src/services/*`).
+Pola standar yang digunakan di sini adalah:
+
+- **State lokal komponen** untuk data form yang reaktif
+- **Global state Pinia** khusus untuk:
+  - Authentication (`auth.js`)
+  - Toast Notifications (`toast.js`)
+
+Pemanggilan API dilakukan langsung di dalam komponen secara berurutan menggunakan layer service Axios yang telah diabstraksi (`frontend/src/services/*`).

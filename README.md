@@ -1,36 +1,37 @@
-# Family Finance Management System
+# Sistem Manajemen Keuangan Keluarga
 
-A production-ready, shared family finance tracking application. It is designed to be used by a single family (using one central account login) with multiple individual members tracking their incomes, expenses, budgets, savings goals, and recurring transactions in a single unified dashboard. 
+Aplikasi pencatatan keuangan keluarga yang siap digunakan pada lingkungan produksi (production-ready). Sistem ini dirancang untuk digunakan oleh satu keluarga (menggunakan satu akun utama sebagai pusat) dengan beberapa anggota individu yang dapat mencatat pemasukan, pengeluaran, anggaran, target tabungan, dan transaksi berulang dalam satu dashboard terpadu.
 
-The system provides dual-entry accounting for transfers between accounts and real-time frontend notifications for budget thresholds.
+Sistem ini menyediakan pencatatan akuntansi **dual-entry** untuk transfer antar akun serta **notifikasi real-time pada frontend** ketika penggunaan anggaran mendekati batas tertentu.
 
-## Project Structure
+## Struktur Proyek
 
-This repository is structured as a monorepo containing both the frontend and the backend applications:
+Repositori ini menggunakan struktur **monorepo** yang berisi aplikasi frontend dan backend:
 
-*   [`/backend`](./backend) - The Laravel 11 REST API. Handle all data persistence, business logic, authentication, and background scheduling.
-*   [`/frontend`](./frontend) - The Vue 3 SPA. A responsive, dynamic user interface built with Vite, Vue Router, Pinia, and Bootstrap.
+*   [`/backend`](./backend) - REST API berbasis Laravel 11. Menangani seluruh penyimpanan data, logika bisnis, autentikasi, dan penjadwalan proses background.
+*   [`/frontend`](./frontend) - Vue 3 Single Page Application (SPA). Antarmuka pengguna yang responsif dan dinamis yang dibangun menggunakan Vite, Vue Router, Pinia, dan Bootstrap.
 
-## Architecture
+## Arsitektur
 
 *   **API Framework**: Laravel 11 
 *   **Database**: MySQL 8
-*   **Authentication**: Laravel Sanctum (Token-based)
+*   **Authentication**: Laravel Sanctum (berbasis token)
 *   **Frontend Framework**: Vue 3 (Composition API)
 *   **Build Tool**: Vite
 *   **State Management**: Pinia
-*   **Styling**: Custom CSS Built on Bootstrap 5
+*   **Styling**: Custom CSS berbasis Bootstrap 5
 *   **Charts**: Chart.js / Vue-Chartjs
 
-## Core Features
-1.  **Member Management**: Add family members (Father, Mother, Child, etc.) and assign transactions to them.
-2.  **Account Management**: Track balances across cash, bank accounts, and e-wallets.
-3.  **Transaction Tracking**: Record incomes, expenses, and dual-entry transfers between family accounts.
-4.  **Budgets**: Set monthly expense limits per category with real-time progress bars and alerts when hitting 80% usage.
-5.  **Saving Goals**: Track target amounts and deadlines for specific purchases or funds.
-6.  **Recurring Transactions**: Automatically log repeating bills/salaries based on weekly, monthly, or yearly frequencies.
-7.  **Analytics Dashboard**: Visual reports, income/expense bar charts, 6-month trend lines, and category distribution pie charts.
+## Fitur Utama
 
-## Deployment Roadmap
+1.  **Manajemen Anggota**: Menambahkan anggota keluarga (Ayah, Ibu, Anak, dll.) dan mengaitkan transaksi kepada masing-masing anggota.
+2.  **Manajemen Akun**: Melacak saldo pada kas, rekening bank, dan e-wallet.
+3.  **Pencatatan Transaksi**: Mencatat pemasukan, pengeluaran, serta transfer antar akun keluarga menggunakan sistem dual-entry.
+4.  **Anggaran (Budget)**: Menentukan batas pengeluaran bulanan per kategori dengan progress bar real-time serta notifikasi ketika penggunaan mencapai 80%.
+5.  **Target Tabungan (Saving Goals)**: Melacak jumlah target dan tenggat waktu untuk pembelian atau tujuan dana tertentu.
+6.  **Transaksi Berulang (Recurring Transactions)**: Secara otomatis mencatat tagihan atau gaji yang berulang berdasarkan frekuensi mingguan, bulanan, atau tahunan.
+7.  **Dashboard Analitik**: Menyediakan laporan visual berupa grafik batang pemasukan/pengeluaran, tren 6 bulan, dan diagram pie distribusi kategori.
 
-This application is ready to be dockerized or deployed to a standard LEMP/LAMP stack. Please refer to the specific README files in the `/backend` and `/frontend` directories for detailed local setup instructions.
+## Roadmap Deployment
+
+Aplikasi ini siap untuk dijalankan menggunakan Docker atau dideploy pada stack server LEMP/LAMP standar. Silakan merujuk pada file README khusus di direktori `/backend` dan `/frontend` untuk panduan lengkap setup lokal.

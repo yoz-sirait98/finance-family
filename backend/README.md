@@ -1,21 +1,24 @@
-# Family Finance Backend API
+# Backend API Sistem Manajemen Keuangan Keluarga
 
-This directory contains the REST API for the Family Finance Management System, built with **Laravel 11** and **PHP 8.3**.
+Direktori ini berisi REST API untuk Sistem Manajemen Keuangan Keluarga yang dibangun menggunakan **Laravel 11** dan **PHP 8.3**.
 
 ## Requirements
-*   PHP 8.3 or higher
+*   PHP 8.3 atau lebih tinggi
 *   Composer
 *   MySQL 8.0+
 
-## Local Setup
+## Setup Lokal
 
 1.  **Install dependencies:**
     ```bash
     composer install
     ```
-2.  **Environment Setup:**
-    Duplicate `.env.example` as `.env`.
-    Configure your database credentials:
+
+2.  **Setup Environment:**
+    Salin file `.env.example` menjadi `.env`.
+
+    Konfigurasikan kredensial database Anda:
+
     ```env
     DB_CONNECTION=mysql
     DB_HOST=127.0.0.1
@@ -24,42 +27,58 @@ This directory contains the REST API for the Family Finance Management System, b
     DB_USERNAME=root
     DB_PASSWORD=
     ```
+
 3.  **Generate app key:**
     ```bash
     php artisan key:generate
     ```
-4.  **Run Migrations and Seeders:**
-    This application requires base categories to function nicely. The seeder also provides a demo family.
+
+4.  **Jalankan Migration dan Seeder:**
+
+    Aplikasi ini membutuhkan kategori dasar agar dapat berfungsi dengan baik. Seeder juga menyediakan contoh data keluarga (demo family).
+
     ```bash
     php artisan migrate
     php artisan db:seed
     ```
-5.  **Start the local server:**
+
+5.  **Jalankan server lokal:**
+
     ```bash
     php artisan serve --port=8000
     ```
 
-## Architecture Details
+## Detail Arsitektur
 
-*   **Authentication**: We use Laravel Sanctum issuing plain-text Bearer Tokens. All routes under `/api/*` expect this token except `/api/auth/login` and `/api/auth/register`.
-*   **Services Pattern**: Thick controllers are avoided. Business logic, specifically for cascading account balance recalculations (`AccountBalanceService`), dual-entry transfers (`TransactionService`), and deadline checking (`RecurringTransactionService`) exist in the `app/Services` folder.
-*   **Localization**: The app defaults to `Asia/Jakarta` timezone and assumes IDR format logic for monetary values.
+*   **Authentication**: Menggunakan Laravel Sanctum yang menghasilkan Bearer Token dalam bentuk plain-text. Semua route di bawah `/api/*` membutuhkan token ini kecuali `/api/auth/login` dan `/api/auth/register`.
+
+*   **Services Pattern**: Controller dibuat tetap ringan. Logika bisnis ditempatkan pada service layer, seperti:
+    - Perhitungan ulang saldo akun secara berantai (`AccountBalanceService`)
+    - Transfer dual-entry (`TransactionService`)
+    - Pengecekan jatuh tempo transaksi berulang (`RecurringTransactionService`)
+
+    Seluruh service berada di folder `app/Services`.
+
+*   **Localization**: Aplikasi menggunakan timezone default `Asia/Jakarta` dan mengasumsikan format mata uang **IDR** untuk nilai finansial.
 
 ## Scheduled Tasks
 
-The application has a background job that automatically inserts returning transactions that are due. For production, ensure you add the Laravel scheduler to your server's cron tab:
+Aplikasi memiliki background job yang secara otomatis memasukkan transaksi berulang ketika sudah jatuh tempo.
+
+Untuk production, pastikan Laravel scheduler ditambahkan pada **cron tab** server Anda:
 
 ```bash
 * * * * * cd /path-to-your-project/backend && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-## Available API Endpoint Groups
-*   `POST /auth/*`: Login, Register, Logout, Password changes
-*   `CRUD /members`: Family member profiles
-*   `CRUD /accounts`: Bank/Cash balances
-*   `CRUD /categories`: Income/Expense labels
-*   `CRUD /transactions`: Core ledger (Includes `POST /transactions/transfer`)
-*   `CRUD /budgets`: Monthly budget caps and alerts
-*   `CRUD /goals`: Target savings and contributions
-*   `CRUD /recurring-transactions`: Automation rules
-*   `GET /dashboard/*`: Aggregated UI metric endpoints
+## Grup Endpoint API yang Tersedia
+
+*   `POST /auth/*`: Login, Register, Logout, perubahan password
+*   `CRUD /members`: Profil anggota keluarga
+*   `CRUD /accounts`: Saldo bank/kas
+*   `CRUD /categories`: Label pemasukan/pengeluaran
+*   `CRUD /transactions`: Buku transaksi utama (termasuk `POST /transactions/transfer`)
+*   `CRUD /budgets`: Batas anggaran bulanan dan notifikasi
+*   `CRUD /goals`: Target tabungan dan kontribusi
+*   `CRUD /recurring-transactions`: Aturan otomatisasi transaksi
+*   `GET /dashboard/*`: Endpoint agregasi metrik untuk tampilan dashboard
