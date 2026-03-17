@@ -35,3 +35,37 @@ Repositori ini menggunakan struktur **monorepo** yang berisi aplikasi frontend d
 ## Roadmap Deployment
 
 Aplikasi ini siap untuk dijalankan menggunakan Docker atau dideploy pada stack server LEMP/LAMP standar. Silakan merujuk pada file README khusus di direktori `/backend` dan `/frontend` untuk panduan lengkap setup lokal.
+
+## Tangkapan Layar (Screenshots)
+
+Berikut adalah beberapa tampilan halaman dari aplikasi:
+
+### 1. Dashboard Utama
+![Dashboard Utama](docs/screenshots/page_dashboard_1773716785210.png)
+
+### 2. Transaksi (Transactions)
+![Halaman Transaksi](docs/screenshots/page_transactions_1773716798644.png)
+
+### 3. Anggaran (Budgets)
+![Halaman Anggaran](docs/screenshots/page_budgets_1773716816705.png)
+
+### 4. Target Tabungan (Goals)
+![Halaman Target Tabungan](docs/screenshots/page_goals_1773716819480.png)
+
+### 5. Laporan Analitik (Reports)
+![Halaman Laporan](docs/screenshots/page_reports_1773716836363.png)
+
+### 6. Transaksi Berulang (Recurring)
+![Halaman Transaksi Berulang](docs/screenshots/page_recurring_1773716827633.png)
+
+### 7. Kelola Anggota Kawanan (Members)
+![Halaman Anggota Keluarga](docs/screenshots/page_members_1773716830526.png)
+
+### 8. Rekening & Dompet (Accounts)
+![Halaman Akun](docs/screenshots/page_accounts_1773716805706.png)
+
+### 9. Kategori Pemasukan & Pengeluaran (Categories)
+![Halaman Kategori](docs/screenshots/page_categories_1773716814084.png)
+
+### 10. Pengaturan Profil (Settings)
+![Halaman Pengaturan](docs/screenshots/page_settings_1773716844257.png)
