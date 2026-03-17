@@ -32,7 +32,12 @@
           <div class="col-md-2">
             <select v-model="filters.category_id" class="form-select form-select-sm" @change="fetchData">
               <option value="">All Categories</option>
-              <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+              <optgroup label="Income" v-if="incomeCategories.length">
+                <option v-for="c in incomeCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </optgroup>
+              <optgroup label="Expense" v-if="expenseCategories.length">
+                <option v-for="c in expenseCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </optgroup>
             </select>
           </div>
           <div class="col-md-2">
@@ -296,6 +301,9 @@ const filteredCategories = computed(() => {
   if (!form.value.type) return categories.value;
   return categories.value.filter(c => c.type === form.value.type);
 });
+
+const incomeCategories = computed(() => categories.value.filter(c => c.type === 'income'));
+const expenseCategories = computed(() => categories.value.filter(c => c.type === 'expense'));
 
 let debounceTimer = null;
 function debouncedFetch() {
