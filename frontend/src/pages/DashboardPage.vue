@@ -63,13 +63,17 @@
       <div class="col-lg-4">
         <div class="chart-card h-100">
           <h6><i class="bi bi-pie-chart me-2"></i>Expense by Category</h6>
-          <canvas ref="pieChart"></canvas>
+          <div style="position: relative; height: 300px;">
+            <canvas ref="pieChart"></canvas>
+          </div>
         </div>
       </div>
       <div class="col-lg-8">
         <div class="chart-card h-100">
           <h6><i class="bi bi-bar-chart me-2"></i>Income vs Expense</h6>
-          <canvas ref="barChart"></canvas>
+          <div style="position: relative; height: 300px;">
+            <canvas ref="barChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -78,7 +82,9 @@
       <div class="col-12">
         <div class="chart-card">
           <h6><i class="bi bi-graph-up me-2"></i>Expense Trend (Last 6 Months)</h6>
-          <canvas ref="lineChart"></canvas>
+          <div style="position: relative; height: 300px;">
+            <canvas ref="lineChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -117,6 +123,7 @@ onMounted(async () => {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { position: 'bottom', labels: { padding: 16 } } },
         },
       });
@@ -137,6 +144,7 @@ onMounted(async () => {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { position: 'top' } },
           scales: { y: { beginAtZero: true } },
         },
@@ -162,6 +170,7 @@ onMounted(async () => {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: { y: { beginAtZero: true } },
         },
