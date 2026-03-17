@@ -63,16 +63,22 @@
       <div class="col-lg-4">
         <div class="chart-card h-100">
           <h6><i class="bi bi-pie-chart me-2"></i>Expense by Category</h6>
-          <div style="position: relative; height: 300px;">
+          <div v-if="hasPieData" style="position: relative; height: 300px;">
             <canvas ref="pieChart"></canvas>
+          </div>
+          <div v-else class="d-flex align-items-center justify-content-center text-muted" style="height: 300px;">
+            No transactions yet
           </div>
         </div>
       </div>
       <div class="col-lg-8">
         <div class="chart-card h-100">
           <h6><i class="bi bi-bar-chart me-2"></i>Income vs Expense</h6>
-          <div style="position: relative; height: 300px;">
+          <div v-if="hasBarData" style="position: relative; height: 300px;">
             <canvas ref="barChart"></canvas>
+          </div>
+          <div v-else class="d-flex align-items-center justify-content-center text-muted" style="height: 300px;">
+            No transactions yet
           </div>
         </div>
       </div>
@@ -82,8 +88,11 @@
       <div class="col-12">
         <div class="chart-card">
           <h6><i class="bi bi-graph-up me-2"></i>Expense Trend (Last 6 Months)</h6>
-          <div style="position: relative; height: 300px;">
+          <div v-if="hasLineData" style="position: relative; height: 300px;">
             <canvas ref="lineChart"></canvas>
+          </div>
+          <div v-else class="d-flex align-items-center justify-content-center text-muted" style="height: 300px;">
+            No transactions yet
           </div>
         </div>
       </div>
@@ -102,6 +111,10 @@ const pieChart = ref(null);
 const barChart = ref(null);
 const lineChart = ref(null);
 
+const hasPieData = ref(true);
+const hasBarData = ref(true);
+const hasLineData = ref(true);
+
 onMounted(async () => {
   try {
     const { data: summaryRes } = await dashboardService.summary();
@@ -110,7 +123,8 @@ onMounted(async () => {
 
   try {
     const { data: pieRes } = await dashboardService.charts('expense-by-category');
-    if (pieChart.value && pieRes.data.length) {
+    hasPieData.value = pieRes.data && pieRes.data.length > 0;
+    if (pieChart.value && hasPieData.value) {
       new Chart(pieChart.value, {
         type: 'doughnut',
         data: {
@@ -132,7 +146,8 @@ onMounted(async () => {
 
   try {
     const { data: barRes } = await dashboardService.charts('income-vs-expense');
-    if (barChart.value && barRes.data.length) {
+    hasBarData.value = barRes.data && barRes.data.some(d => d.income > 0 || d.expense > 0);
+    if (barChart.value && hasBarData.value) {
       new Chart(barChart.value, {
         type: 'bar',
         data: {
@@ -154,7 +169,8 @@ onMounted(async () => {
 
   try {
     const { data: lineRes } = await dashboardService.charts('expense-trend');
-    if (lineChart.value && lineRes.data.length) {
+    hasLineData.value = lineRes.data && lineRes.data.some(d => d.expense > 0);
+    if (lineChart.value && hasLineData.value) {
       new Chart(lineChart.value, {
         type: 'line',
         data: {
