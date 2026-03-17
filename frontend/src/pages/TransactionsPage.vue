@@ -59,6 +59,14 @@
             <input v-model="filters.date_to" type="date" class="form-control form-control-sm" @change="fetchData" />
           </div>
           <div class="col-auto">
+            <select v-model="filters.per_page" class="form-select form-select-sm" @change="fetchData">
+              <option value="15">15 rows</option>
+              <option value="25">25 rows</option>
+              <option value="50">50 rows</option>
+              <option value="100">100 rows</option>
+            </select>
+          </div>
+          <div class="col-auto">
             <button class="btn btn-sm btn-outline-secondary" @click="resetFilters"><i class="bi bi-x-lg"></i> Clear</button>
           </div>
         </div>
@@ -291,7 +299,7 @@ const toast = useToastStore();
 const filters = ref({
   search: '', type: '', category_id: '', member_id: '',
   account_id: '', date_from: '', date_to: '',
-  sort_by: 'transaction_date', sort_dir: 'desc', page: 1,
+  sort_by: 'transaction_date', sort_dir: 'desc', page: 1, per_page: 15,
 });
 
 const form = ref({ type: 'expense', member_id: '', account_id: '', category_id: '', amount: '', transaction_date: todayISO(), description: '' });
@@ -342,7 +350,7 @@ function goToPage(p) {
 }
 
 function resetFilters() {
-  filters.value = { search: '', type: '', category_id: '', member_id: '', account_id: '', date_from: '', date_to: '', sort_by: 'transaction_date', sort_dir: 'desc', page: 1 };
+  filters.value = { search: '', type: '', category_id: '', member_id: '', account_id: '', date_from: '', date_to: '', sort_by: 'transaction_date', sort_dir: 'desc', page: 1, per_page: 15 };
   fetchData();
 }
 

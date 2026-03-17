@@ -44,6 +44,15 @@ class TransactionController extends Controller
 
         $data['user_id'] = $request->user()->id;
 
+        if ($data['type'] === 'expense') {
+            $account = \App\Models\Account::find($data['account_id']);
+            if ($account && $account->balance < $data['amount']) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => ['Insufficient balance in the selected account.']
+                ]);
+            }
+        }
+
         $transaction = $this->transactionService->create($data);
 
         return new TransactionResource($transaction);
@@ -72,6 +81,30 @@ class TransactionController extends Controller
             'transaction_date' => 'sometimes|date',
         ]);
 
+        $type = $data['type'] ?? $transaction->type;
+        $amount = $data['amount'] ?? $transaction->amount;
+        $accountId = $data['account_id'] ?? $transaction->account_id;
+
+        if ($type === 'expense') {
+            $account = \App\Models\Account::find($accountId);
+            $availableBalance = $account->balance;
+
+            // Adjust available balance based on the previous transaction state
+            if ($transaction->account_id == $accountId) {
+                if ($transaction->type === 'expense') {
+                    $availableBalance += $transaction->amount;
+                } elseif ($transaction->type === 'income') {
+                    $availableBalance -= $transaction->amount;
+                }
+            }
+
+            if ($account && $availableBalance < $amount) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => ['Insufficient balance in the selected account.']
+                ]);
+            }
+        }
+
         $transaction = $this->transactionService->update($transaction, $data);
 
         return new TransactionResource($transaction);
@@ -98,6 +131,13 @@ class TransactionController extends Controller
         ]);
 
         $data['user_id'] = $request->user()->id;
+
+        $fromAccount = \App\Models\Account::find($data['from_account_id']);
+        if ($fromAccount && $fromAccount->balance < $data['amount']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'amount' => ['Insufficient balance in the source account.']
+            ]);
+        }
 
         $transactions = $this->transactionService->createTransfer($data);
 
