@@ -100,8 +100,10 @@
   </div>
 </template>
 
+
+
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { dashboardService } from '../services/dashboardService';
 import { formatRupiah } from '../utils/currency';
@@ -111,27 +113,50 @@ const pieChart = ref(null);
 const barChart = ref(null);
 const lineChart = ref(null);
 
-const hasPieData = ref(true);
-const hasBarData = ref(true);
-const hasLineData = ref(true);
+const hasPieData = ref(false);
+const hasBarData = ref(false);
+const hasLineData = ref(false);
 
 onMounted(async () => {
   try {
-    const { data: summaryRes } = await dashboardService.summary();
-    summary.value = summaryRes.data;
-  } catch {}
+    // Fetch summary
+    const summaryRes = await dashboardService.summary();
+    if (summaryRes?.data?.data) {
+      summary.value = summaryRes.data.data;
+    }
 
-  try {
-    const { data: pieRes } = await dashboardService.charts('expense-by-category');
-    hasPieData.value = pieRes.data && pieRes.data.length > 0;
-    if (pieChart.value && hasPieData.value) {
+    // Fetch charts in parallel
+    const [pieRes, barRes, lineRes] = await Promise.all([
+      dashboardService.charts('expense-by-category').catch(() => null),
+      dashboardService.charts('income-vs-expense').catch(() => null),
+      dashboardService.charts('expense-trend').catch(() => null),
+    ]);
+
+    // Step 1: Validate data and set flags to render canvas elements
+    const pieData = pieRes?.data?.data || [];
+    const barData = barRes?.data?.data || [];
+    const lineData = lineRes?.data?.data || [];
+
+    const hasPie = pieData.length > 0;
+    const hasBar = barData.some(d => d.income > 0 || d.expense > 0);
+    const hasLine = lineData.some(d => d.expense > 0);
+
+    hasPieData.value = hasPie;
+    hasBarData.value = hasBar;
+    hasLineData.value = hasLine;
+
+    // Step 2: Wait for canvas elements to be rendered in DOM
+    await nextTick();
+
+    // Step 3: Initialize charts
+    if (hasPie && pieChart.value) {
       new Chart(pieChart.value, {
         type: 'doughnut',
         data: {
-          labels: pieRes.data.map(d => d.category),
+          labels: pieData.map(d => d.category),
           datasets: [{
-            data: pieRes.data.map(d => d.total),
-            backgroundColor: pieRes.data.map(d => d.color),
+            data: pieData.map(d => d.total),
+            backgroundColor: pieData.map(d => d.color),
             borderWidth: 0,
           }],
         },
@@ -142,19 +167,15 @@ onMounted(async () => {
         },
       });
     }
-  } catch {}
 
-  try {
-    const { data: barRes } = await dashboardService.charts('income-vs-expense');
-    hasBarData.value = barRes.data && barRes.data.some(d => d.income > 0 || d.expense > 0);
-    if (barChart.value && hasBarData.value) {
+    if (hasBar && barChart.value) {
       new Chart(barChart.value, {
         type: 'bar',
         data: {
-          labels: barRes.data.map(d => d.month),
+          labels: barData.map(d => d.month),
           datasets: [
-            { label: 'Income', data: barRes.data.map(d => d.income), backgroundColor: '#28a745', borderRadius: 4 },
-            { label: 'Expense', data: barRes.data.map(d => d.expense), backgroundColor: '#dc3545', borderRadius: 4 },
+            { label: 'Income', data: barData.map(d => d.income), backgroundColor: '#28a745', borderRadius: 4 },
+            { label: 'Expense', data: barData.map(d => d.expense), backgroundColor: '#dc3545', borderRadius: 4 },
           ],
         },
         options: {
@@ -165,19 +186,15 @@ onMounted(async () => {
         },
       });
     }
-  } catch {}
 
-  try {
-    const { data: lineRes } = await dashboardService.charts('expense-trend');
-    hasLineData.value = lineRes.data && lineRes.data.some(d => d.expense > 0);
-    if (lineChart.value && hasLineData.value) {
+    if (hasLine && lineChart.value) {
       new Chart(lineChart.value, {
         type: 'line',
         data: {
-          labels: lineRes.data.map(d => d.month),
+          labels: lineData.map(d => d.month),
           datasets: [{
             label: 'Expense',
-            data: lineRes.data.map(d => d.expense),
+            data: lineData.map(d => d.expense),
             borderColor: '#dc3545',
             backgroundColor: 'rgba(220,53,69,0.1)',
             fill: true,
@@ -192,6 +209,8 @@ onMounted(async () => {
         },
       });
     }
-  } catch {}
+  } catch (error) {
+    console.error('Dashboard error:', error);
+  }
 });
 </script>
