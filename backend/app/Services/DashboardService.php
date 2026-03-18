@@ -17,12 +17,14 @@ class DashboardService
 
         $income = Transaction::where('user_id', $userId)
             ->where('type', 'income')
+            ->where('transfer_id', null)
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
             ->sum('amount');
 
         $expense = Transaction::where('user_id', $userId)
             ->where('type', 'expense')
+            ->where('transfer_id', null)
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
             ->sum('amount');
@@ -53,6 +55,7 @@ class DashboardService
 
         return Transaction::where('user_id', $userId)
             ->where('type', 'expense')
+            ->where('transfer_id', null)
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
             ->whereNotNull('category_id')
@@ -75,6 +78,7 @@ class DashboardService
 
         return Transaction::where('user_id', $userId)
             ->where('type', 'expense')
+            ->where('transfer_id', null)
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
             ->whereNotNull('member_id')
@@ -101,12 +105,14 @@ class DashboardService
         for ($m = 1; $m <= 12; $m++) {
             $income = Transaction::where('user_id', $userId)
                 ->where('type', 'income')
+                ->where('transfer_id', null)
                 ->whereMonth('transaction_date', $m)
                 ->whereYear('transaction_date', $year)
                 ->sum('amount');
 
             $expense = Transaction::where('user_id', $userId)
                 ->where('type', 'expense')
+                ->where('transfer_id', null)
                 ->whereMonth('transaction_date', $m)
                 ->whereYear('transaction_date', $year)
                 ->sum('amount');
@@ -131,6 +137,7 @@ class DashboardService
 
             $expense = Transaction::where('user_id', $userId)
                 ->where('type', 'expense')
+                ->where('transfer_id', null)
                 ->whereMonth('transaction_date', $date->month)
                 ->whereYear('transaction_date', $date->year)
                 ->sum('amount');
