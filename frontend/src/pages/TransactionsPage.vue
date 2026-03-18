@@ -433,12 +433,13 @@ async function saveTransfer() {
 }
 
 onMounted(async () => {
+  const transactionsPromise = fetchData();
   const [memRes, accRes, catRes] = await Promise.all([
     memberService.list(), accountService.list(), categoryService.list(),
   ]);
   members.value = memRes.data.data;
   accounts.value = accRes.data.data;
   categories.value = catRes.data.data;
-  fetchData();
+  await transactionsPromise;
 });
 </script>

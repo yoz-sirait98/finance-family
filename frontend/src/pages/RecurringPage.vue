@@ -9,21 +9,30 @@
         <table class="table table-hover mb-0">
           <thead><tr><th>Description</th><th>Type</th><th>Amount</th><th>Frequency</th><th>Next Due</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            <tr v-if="!items.length"><td colspan="7" class="text-center py-4 text-muted">No recurring transactions</td></tr>
-            <tr v-for="r in items" :key="r.id">
-              <td>{{ r.description || r.category?.name || '-' }}</td>
-              <td><span class="badge" :class="'badge-' + r.type">{{ r.type }}</span></td>
-              <td class="fw-semibold">{{ r.amount_formatted }}</td>
-              <td><span class="badge bg-info">{{ r.frequency }}</span></td>
-              <td>{{ r.next_due_date }}</td>
-              <td><span class="badge" :class="r.is_active ? 'bg-success' : 'bg-secondary'">{{ r.is_active ? 'Active' : 'Inactive' }}</span></td>
-              <td>
-                <div class="btn-group btn-group-sm">
-                  <button class="btn btn-outline-primary" @click="openEdit(r)"><i class="bi bi-pencil"></i></button>
-                  <button class="btn btn-outline-danger" @click="confirmDelete(r)"><i class="bi bi-trash"></i></button>
-                </div>
+            <tr v-if="loading">
+              <td colspan="7" class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-primary"></div> Loading...
               </td>
             </tr>
+            <tr v-else-if="!items.length">
+              <td colspan="7" class="text-center py-4 text-muted">No recurring transactions</td>
+            </tr>
+            <template v-else>
+              <tr v-for="r in items" :key="r.id">
+                <td>{{ r.description || r.category?.name || '-' }}</td>
+                <td><span class="badge" :class="'badge-' + r.type">{{ r.type }}</span></td>
+                <td class="fw-semibold">{{ r.amount_formatted }}</td>
+                <td><span class="badge bg-info">{{ r.frequency }}</span></td>
+                <td>{{ r.next_due_date }}</td>
+                <td><span class="badge" :class="r.is_active ? 'bg-success' : 'bg-secondary'">{{ r.is_active ? 'Active' : 'Inactive' }}</span></td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" @click="openEdit(r)"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-danger" @click="confirmDelete(r)"><i class="bi bi-trash"></i></button>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -128,6 +137,7 @@ const items = ref([]);
 const members = ref([]);
 const accounts = ref([]);
 const categories = ref([]);
+const loading = ref(true);
 const editingId = ref(null);
 const form = ref({ type: 'expense', member_id: '', account_id: '', category_id: '', amount: 0, description: '', frequency: 'monthly', next_due_date: '', end_date: '' });
 const formError = ref('');
@@ -138,8 +148,13 @@ const deletingItem = ref(null);
 const toast = useToastStore();
 
 async function fetchData() {
-  const { data } = await api.get('/recurring-transactions');
-  items.value = data.data;
+  loading.value = true;
+  try {
+    const { data } = await api.get('/recurring-transactions');
+    items.value = data.data;
+  } finally {
+    loading.value = false;
+  }
 }
 
 function openCreate() {
@@ -193,14 +208,18 @@ async function doDelete() {
 }
 
 onMounted(async () => {
+  const fetchPromise = fetchData();
+
   const [memRes, accRes, catRes] = await Promise.all([
     memberService.list(),
     accountService.list(),
     categoryService.list()
   ]);
+
   members.value = memRes.data.data;
   accounts.value = accRes.data.data;
   categories.value = catRes.data.data;
-  fetchData();
+
+  await fetchPromise;
 });
 </script>

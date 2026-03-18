@@ -15,6 +15,7 @@ class TransactionService
     public function list(int $userId, array $filters = [])
     {
         $query = Transaction::where('user_id', $userId)
+            ->select(['id', 'user_id', 'member_id', 'account_id', 'category_id', 'type', 'amount', 'description', 'transaction_date', 'transfer_id', 'created_at'])
             ->with(['member', 'account', 'category']);
 
         if (!empty($filters['search'])) {
