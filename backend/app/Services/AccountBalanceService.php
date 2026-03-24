@@ -9,19 +9,22 @@ class AccountBalanceService
 {
     public function updateBalance(int $accountId): void
     {
-        $account = Account::findOrFail($accountId);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($accountId) {
+            // Apply pessimistic locking to prevent race conditions during concurrent updates
+            $account = Account::lockForUpdate()->findOrFail($accountId);
 
-        $income = Transaction::where('account_id', $accountId)
-            ->where('type', 'income')
-            ->sum('amount');
+            $income = Transaction::where('account_id', $accountId)
+                ->where('type', 'income')
+                ->sum('amount');
 
-        $expense = Transaction::where('account_id', $accountId)
-            ->where('type', 'expense')
-            ->sum('amount');
+            $expense = Transaction::where('account_id', $accountId)
+                ->where('type', 'expense')
+                ->sum('amount');
 
-        $account->update([
-            'balance' => $account->initial_balance + $income - $expense,
-        ]);
+            $account->update([
+                'balance' => $account->initial_balance + $income - $expense,
+            ]);
+        });
     }
 
     public function recalculateAll(int $userId): void

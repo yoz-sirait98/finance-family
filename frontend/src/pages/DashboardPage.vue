@@ -13,6 +13,21 @@
       <span class="text-muted small ms-1">— Income vs Expense chart always shows full year</span>
     </div>
 
+    <!-- AI Financial Insights -->
+    <div v-if="insights.length" class="mb-4">
+      <h6 class="fw-bold mb-2"><i class="bi bi-stars text-warning me-2"></i>Financial Intelligence</h6>
+      <div class="row g-2">
+        <div v-for="(insight, index) in insights" :key="index" class="col-md-4">
+          <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)); border-left: 3px solid #667eea !important;">
+            <div class="card-body p-2 d-flex align-items-center">
+              <i class="bi bi-lightbulb text-primary mx-2 fs-5"></i>
+              <p class="mb-0" style="font-size: 0.8rem; line-height: 1.2;">{{ insight }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Summary Cards -->
     <div class="row g-3 mb-4">
       <div class="col-xl-3 col-md-6">
@@ -98,7 +113,7 @@
     </div>
 
     <div class="row g-3">
-      <div class="col-12">
+      <div class="col-lg-6">
         <div class="chart-card">
           <h6><i class="bi bi-graph-up me-2"></i>Expense Trend (Last 6 Months)</h6>
           <div v-if="hasLineData" style="position: relative; height: 300px;">
@@ -106,6 +121,17 @@
           </div>
           <div v-else class="d-flex align-items-center justify-content-center text-muted" style="height: 300px;">
             No transactions yet
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="chart-card">
+          <h6><i class="bi bi-cash-stack me-2"></i>Net Worth Growth</h6>
+          <div v-if="hasNetWorthData" style="position: relative; height: 300px;">
+            <canvas ref="netWorthChart"></canvas>
+          </div>
+          <div v-else class="d-flex align-items-center justify-content-center text-muted" style="height: 300px;">
+            No historical net worth snapshots
           </div>
         </div>
       </div>
@@ -117,6 +143,8 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { dashboardService } from '../services/dashboardService';
+import { insightService } from '../services/insightService';
+import { netWorthService } from '../services/netWorthService';
 import { formatRupiah } from '../utils/currency';
 
 const now = new Date();
@@ -142,39 +170,59 @@ const currentMonthLabel = computed(() => {
 
 // Chart & summary state
 const summary  = ref({ total_balance: 0, monthly_income: 0, monthly_expense: 0, monthly_net: 0 });
+const insights = ref([]);
 const pieChart  = ref(null);
 const barChart  = ref(null);
 const lineChart = ref(null);
+const netWorthChart = ref(null);
 
 const hasPieData  = ref(false);
 const hasBarData  = ref(false);
 const hasLineData = ref(false);
+const hasNetWorthData = ref(false);
 
-let pieInstance, barInstance, lineInstance;
+let pieInstance, barInstance, lineInstance, netWorthInstance;
 
 async function loadAll() {
   // Destroy existing chart instances
   if (pieInstance)  { pieInstance.destroy();  pieInstance  = null; }
   if (barInstance)  { barInstance.destroy();  barInstance  = null; }
   if (lineInstance) { lineInstance.destroy(); lineInstance = null; }
+  if (netWorthInstance) { netWorthInstance.destroy(); netWorthInstance = null; }
 
-  // Fetch summary + 3 charts in parallel
-  const [summaryRes, pieRes, barRes, lineRes] = await Promise.all([
+  // Fetch summary + 3 charts + insights + net worth in parallel
+  const [summaryRes, pieRes, barRes, lineRes, insightsRes, nwHistoryRes, nwCurrentRes] = await Promise.all([
     dashboardService.summary({ month: selectedMonth.value, year: selectedYear.value }).catch(() => null),
     dashboardService.charts('expense-by-category', { month: selectedMonth.value, year: selectedYear.value }).catch(() => null),
     dashboardService.charts('income-vs-expense', { year: selectedYear.value }).catch(() => null),
     dashboardService.charts('expense-trend').catch(() => null),
+    insightService.getInsights().catch(() => null),
+    netWorthService.getHistory().catch(() => null),
+    netWorthService.getCurrent().catch(() => null)
   ]);
 
   if (summaryRes?.data?.data) summary.value = summaryRes.data.data;
+  
+  // Override total balance from NetWorth service if available
+  if (nwCurrentRes?.data?.data?.current_net_worth !== undefined) {
+    summary.value.total_balance = nwCurrentRes.data.data.current_net_worth;
+  }
+  
+  if (insightsRes?.data?.data?.insights) {
+    insights.value = insightsRes.data.data.insights;
+  } else {
+    insights.value = [];
+  }
 
   const pieData  = pieRes?.data?.data  || [];
   const barData  = barRes?.data?.data  || [];
   const lineData = lineRes?.data?.data || [];
+  const netWorthData = nwHistoryRes?.data?.data || [];
 
   hasPieData.value  = pieData.length > 0;
   hasBarData.value  = barData.some(d => d.income > 0 || d.expense > 0);
   hasLineData.value = lineData.some(d => d.expense > 0);
+  hasNetWorthData.value = netWorthData.length > 0;
 
   await nextTick();
 
@@ -211,6 +259,17 @@ async function loadAll() {
         datasets: [{ label: 'Expense', data: lineData.map(d => d.expense), borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.1)', fill: true, tension: 0.4 }],
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+    });
+  }
+
+  if (hasNetWorthData.value && netWorthChart.value) {
+    netWorthInstance = new Chart(netWorthChart.value, {
+      type: 'line',
+      data: {
+        labels: netWorthData.map(d => new Date(d.recorded_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })),
+        datasets: [{ label: 'Net Worth', data: netWorthData.map(d => d.total_balance), borderColor: '#667eea', backgroundColor: 'rgba(102,126,234,0.1)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#667eea' }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false } } },
     });
   }
 }

@@ -7,6 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class ActivityLogService
 {
+    private function sanitizeData(?array $data): ?array
+    {
+        if (!$data) {
+            return null;
+        }
+
+        // Remove timestamps and heavy relationship fields to prevent DB bloat
+        return collect($data)->except([
+            'created_at', 'updated_at', 'deleted_at',
+            'user', 'member', 'account', 'category'
+        ])->toArray();
+    }
+
     public function log(
         int $userId,
         string $action,
@@ -22,8 +35,8 @@ class ActivityLogService
             'action' => $action,
             'entity_type' => $entityType,
             'entity_id' => $entityId,
-            'before_data' => $beforeData,
-            'after_data' => $afterData,
+            'before_data' => $this->sanitizeData($beforeData),
+            'after_data' => $this->sanitizeData($afterData),
         ]);
     }
 
