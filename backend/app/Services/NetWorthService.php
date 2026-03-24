@@ -14,6 +14,14 @@ class NetWorthService
         return (float) Account::where('user_id', $userId)->sum('balance');
     }
 
+    public function getHistory(int $userId): array
+    {
+        return \App\Models\NetWorthHistory::where('user_id', $userId)
+            ->orderBy('recorded_at', 'asc')
+            ->get()
+            ->toArray();
+    }
+
     public function storeMonthlySnapshot(): int
     {
         $count = 0;

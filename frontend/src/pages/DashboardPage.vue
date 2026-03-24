@@ -190,38 +190,32 @@ async function loadAll() {
   if (lineInstance) { lineInstance.destroy(); lineInstance = null; }
   if (netWorthInstance) { netWorthInstance.destroy(); netWorthInstance = null; }
 
-  // Fetch summary + 3 charts + insights + net worth in parallel
-  const [summaryRes, pieRes, barRes, lineRes, insightsRes, nwHistoryRes, nwCurrentRes] = await Promise.all([
-    dashboardService.summary({ month: selectedMonth.value, year: selectedYear.value }).catch(() => null),
-    dashboardService.charts('expense-by-category', { month: selectedMonth.value, year: selectedYear.value }).catch(() => null),
-    dashboardService.charts('income-vs-expense', { year: selectedYear.value }).catch(() => null),
-    dashboardService.charts('expense-trend').catch(() => null),
-    insightService.getInsights().catch(() => null),
-    netWorthService.getHistory().catch(() => null),
-    netWorthService.getCurrent().catch(() => null)
-  ]);
+  // Single unified API call — replaces 7 separate HTTP requests
+  const res = await dashboardService.full({
+    month: selectedMonth.value,
+    year: selectedYear.value,
+  }).catch(() => null);
 
-  if (summaryRes?.data?.data) summary.value = summaryRes.data.data;
-  
-  // Override total balance from NetWorth service if available
-  if (nwCurrentRes?.data?.data?.current_net_worth !== undefined) {
-    summary.value.total_balance = nwCurrentRes.data.data.current_net_worth;
-  }
-  
-  if (insightsRes?.data?.data?.insights) {
-    insights.value = insightsRes.data.data.insights;
-  } else {
-    insights.value = [];
-  }
+  const d = res?.data?.data;
+  if (!d) return;
 
-  const pieData  = pieRes?.data?.data  || [];
-  const barData  = barRes?.data?.data  || [];
-  const lineData = lineRes?.data?.data || [];
-  const netWorthData = nwHistoryRes?.data?.data || [];
+  // Summary
+  summary.value = d.summary ?? summary.value;
 
-  hasPieData.value  = pieData.length > 0;
-  hasBarData.value  = barData.some(d => d.income > 0 || d.expense > 0);
-  hasLineData.value = lineData.some(d => d.expense > 0);
+  // Override total_balance from live net worth calculation
+  if (d.net_worth_current !== undefined) summary.value.total_balance = d.net_worth_current;
+
+  // Insights
+  insights.value = d.insights ?? [];
+
+  const pieData      = d.expense_by_category ?? [];
+  const barData      = d.income_vs_expense   ?? [];
+  const lineData     = d.expense_trend       ?? [];
+  const netWorthData = d.net_worth_history   ?? [];
+
+  hasPieData.value      = pieData.length > 0;
+  hasBarData.value      = barData.some(x => x.income > 0 || x.expense > 0);
+  hasLineData.value     = lineData.some(x => x.expense > 0);
   hasNetWorthData.value = netWorthData.length > 0;
 
   await nextTick();

@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dashboard
     Route::get('/dashboard/summary', [DashboardController::class , 'summary']);
     Route::get('/dashboard/charts/{type}', [DashboardController::class , 'charts']);
+    Route::get('/dashboard/full', [DashboardController::class , 'full']);
 
     // Net Worth Tracking
     Route::get('/net-worth/current', [NetWorthController::class , 'current']);

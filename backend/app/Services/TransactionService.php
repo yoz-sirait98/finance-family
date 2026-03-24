@@ -10,7 +10,8 @@ class TransactionService
 {
     public function __construct(
         private AccountBalanceService $accountBalanceService,
-        private ActivityLogService $activityLogService
+        private ActivityLogService $activityLogService,
+        private DashboardService $dashboardService
     ) {}
 
     public function list(int $userId, array $filters = [])
@@ -70,6 +71,7 @@ class TransactionService
                 $data['member_id'] ?? null
             );
             
+            $this->dashboardService->clearUserCache($data['user_id']);
             return $transaction->load(['member', 'account', 'category']);
         });
     }
@@ -95,6 +97,7 @@ class TransactionService
                 $transaction->member_id
             );
 
+            $this->dashboardService->clearUserCache($transaction->user_id);
             return $transaction->load(['member', 'account', 'category']);
         });
     }
@@ -135,6 +138,7 @@ class TransactionService
                 $deletedData,
                 $memberId
             );
+            $this->dashboardService->clearUserCache($userId);
         });
     }
 
@@ -171,6 +175,8 @@ class TransactionService
 
             $this->accountBalanceService->updateBalance($data['from_account_id']);
             $this->accountBalanceService->updateBalance($data['to_account_id']);
+
+            $this->dashboardService->clearUserCache($data['user_id']);
 
             return [
                 $expense->load(['member', 'account', 'category']),

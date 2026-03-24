@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
+use App\Services\InsightService;
+use App\Services\NetWorthService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function __construct(
-        private DashboardService $dashboardService
+        private DashboardService $dashboardService,
+        private InsightService $insightService,
+        private NetWorthService $netWorthService,
     ) {}
 
     public function summary(Request $request)
@@ -53,4 +57,31 @@ class DashboardController extends Controller
 
         return response()->json(['data' => $data]);
     }
+
+    /**
+     * Unified full-dashboard endpoint — returns ALL dashboard data in one HTTP round trip.
+     */
+    public function full(Request $request)
+    {
+        $userId = $request->user()->id;
+        $month  = (int) ($request->input('month') ?? now()->month);
+        $year   = (int) ($request->input('year')  ?? now()->year);
+
+        return response()->json([
+            'data' => [
+                'summary'            => $this->dashboardService->getSummary($userId, $month, $year),
+                'expense_by_category'=> $this->dashboardService->getExpenseByCategory($userId, $month, $year),
+                'income_vs_expense'  => $this->dashboardService->getIncomeVsExpense($userId, $year),
+                'expense_trend'      => $this->dashboardService->getMonthlyExpenseTrend($userId, 6),
+                'insights'           => array_values(array_filter([
+                    $this->insightService->getMonthlyComparison($userId),
+                    $this->insightService->getTopSpendingCategories($userId),
+                    $this->insightService->getBudgetRiskPrediction($userId),
+                ])),
+                'net_worth_current'  => $this->netWorthService->calculateCurrentNetWorth($userId),
+                'net_worth_history'  => $this->netWorthService->getHistory($userId),
+            ],
+        ]);
+    }
 }
+
