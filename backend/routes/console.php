@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Process recurring transactions daily at midnight Jakarta time
 Schedule::command('transactions:process-recurring')->daily();
+
+// Record net worth snapshot on the first day of every month at midnight
+Schedule::call(fn () => app(\App\Services\NetWorthService::class)->storeMonthlySnapshot())->monthly();
