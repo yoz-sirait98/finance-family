@@ -265,6 +265,48 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== Budget Over-Budget Confirmation Modal ===== -->
+    <div v-if="showBudgetConfirm" class="vue-modal-backdrop">
+      <div class="vue-modal" style="max-width:460px">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title text-warning">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>Budget Warning
+          </h5>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">
+            This expense will <strong>exceed</strong> your
+            <strong>{{ budgetConfirmData.category }}</strong> budget for this month.
+          </p>
+          <div class="table-sm small mb-0">
+            <div class="d-flex justify-content-between border-bottom py-1">
+              <span class="text-muted">Budget Limit</span>
+              <span class="fw-semibold">{{ budgetConfirmData.limitFmt }}</span>
+            </div>
+            <div class="d-flex justify-content-between border-bottom py-1">
+              <span class="text-muted">Already Spent</span>
+              <span class="fw-semibold">{{ budgetConfirmData.spentFmt }}</span>
+            </div>
+            <div class="d-flex justify-content-between border-bottom py-1">
+              <span class="text-muted">This Transaction</span>
+              <span class="fw-semibold text-danger">{{ budgetConfirmData.addingFmt }}</span>
+            </div>
+            <div class="d-flex justify-content-between py-1">
+              <span class="text-muted">Total After Save</span>
+              <span class="fw-bold text-danger">{{ budgetConfirmData.totalFmt }} ({{ budgetConfirmData.pct }}%)</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button class="btn btn-secondary" @click="showBudgetConfirm = false">Cancel</button>
+          <button class="btn btn-warning" :disabled="saving" @click="doSaveTransaction">
+            <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
+            Yes, save anyway
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -274,8 +316,10 @@ import { transactionService } from '../services/transactionService';
 import { memberService } from '../services/memberService';
 import { accountService } from '../services/accountService';
 import { categoryService } from '../services/categoryService';
+import { budgetService } from '../services/budgetService';
 import { todayISO } from '../utils/date';
 import { useToastStore } from '../stores/toast';
+import { useBudgetStore } from '../stores/budgets';
 
 const transactions = ref([]);
 const meta = ref({});
@@ -295,6 +339,15 @@ const showTransferModal = ref(false);
 const showDeleteModal = ref(false);
 const deletingTx = ref(null);
 const toast = useToastStore();
+const budgetStore = useBudgetStore();
+// Budget over-budget confirmation
+const showBudgetConfirm = ref(false);
+const budgetConfirmData = ref({});
+
+function fmt(n) {
+  const sign = n < 0 ? '-' : '';
+  return sign + 'Rp ' + Math.abs(Number(n)).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
 
 const filters = ref({
   search: '', type: '', category_id: '', member_id: '',
@@ -368,8 +421,49 @@ function openEdit(tx) {
   showTxModal.value = true;
 }
 
+// Called when user clicks Save button — runs budget pre-check for new expenses
 async function saveTransaction() {
+  formError.value = '';
+
+  // Budget pre-check: only for new expenses with a category
+  if (!editingId.value && form.value.type === 'expense' && form.value.category_id) {
+    try {
+      const { data } = await budgetService.list();
+      const budgets = data.data || [];
+      const now = new Date();
+      const budget = budgets.find(
+        b => b.category?.id === form.value.category_id &&
+             b.month === now.getMonth() + 1 &&
+             b.year  === now.getFullYear()
+      );
+
+      if (budget) {
+        const totalAfter = budget.spent + Number(form.value.amount);
+        if (totalAfter > budget.amount) {
+          // Show confirmation dialog instead of saving immediately
+          budgetConfirmData.value = {
+            category:   budget.category?.name ?? 'this category',
+            limitFmt:   fmt(budget.amount),
+            spentFmt:   fmt(budget.spent),
+            addingFmt:  fmt(form.value.amount),
+            totalFmt:   fmt(totalAfter),
+            pct:        budget.amount > 0 ? ((totalAfter / budget.amount) * 100).toFixed(1) : '∞',
+          };
+          showBudgetConfirm.value = true;
+          return; // Stop here — wait for user to confirm
+        }
+      }
+    } catch { /* ignore budget fetch errors — allow save */ }
+  }
+
+  // No budget issue (or editing) — save directly
+  await doSaveTransaction();
+}
+
+// Actually performs the API save (called after confirmation or when no budget issue)
+async function doSaveTransaction() {
   saving.value = true;
+  showBudgetConfirm.value = false;
   formError.value = '';
   try {
     if (editingId.value) {
@@ -381,7 +475,9 @@ async function saveTransaction() {
     }
     showTxModal.value = false;
     fetchData();
+    budgetStore.fetchAlerts(); // keep bell in sync after any transaction change
   } catch (err) {
+    showBudgetConfirm.value = false;
     formError.value = err.response?.data?.message || 'Failed to save';
     toast.error(formError.value);
   } finally {
@@ -403,6 +499,7 @@ async function doDelete() {
     showDeleteModal.value = false;
     deletingTx.value = null;
     fetchData();
+    budgetStore.fetchAlerts(); // keep bell in sync after delete
   } catch (err) {
     toast.error(err.response?.data?.message || 'Failed to delete');
   } finally {

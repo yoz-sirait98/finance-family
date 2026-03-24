@@ -97,6 +97,7 @@ import { ref, onMounted } from 'vue';
 import { budgetService } from '../services/budgetService';
 import { categoryService } from '../services/categoryService';
 import { useToastStore } from '../stores/toast';
+import { useBudgetStore } from '../stores/budgets';
 
 const budgets = ref([]);
 const expenseCategories = ref([]);
@@ -109,6 +110,7 @@ const showModal = ref(false);
 const showDeleteModal = ref(false);
 const deletingItem = ref(null);
 const toast = useToastStore();
+const budgetStore = useBudgetStore();
 
 async function fetchData() {
   const { data } = await budgetService.list({ month: now.getMonth() + 1, year: now.getFullYear() });
@@ -146,6 +148,7 @@ async function save() {
     }
     showModal.value = false;
     fetchData();
+    budgetStore.fetchAlerts(); // update navbar bell instantly
   } catch(e) {
     formError.value = e.response?.data?.message || 'Error occurred';
     toast.error(formError.value);
@@ -165,6 +168,7 @@ async function doDelete() {
     showDeleteModal.value = false;
     deletingItem.value = null;
     fetchData();
+    budgetStore.fetchAlerts(); // update navbar bell instantly
   } catch(e) {
     toast.error(e.response?.data?.message || 'Failed to delete budget');
   }

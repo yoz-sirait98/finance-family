@@ -33,12 +33,12 @@ class TransactionController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'member_id' => 'required|exists:members,id',
-            'account_id' => 'required|exists:accounts,id',
-            'category_id' => 'nullable|exists:categories,id',
-            'type' => 'required|in:income,expense',
-            'amount' => 'required|numeric|min:0.01',
-            'description' => 'nullable|string|max:500',
+            'member_id'        => 'required|exists:members,id',
+            'account_id'       => 'required|exists:accounts,id',
+            'category_id'      => 'nullable|exists:categories,id',
+            'type'             => 'required|in:income,expense',
+            'amount'           => 'required|numeric|min:0.01',
+            'description'      => 'nullable|string|max:500',
             'transaction_date' => 'required|date',
         ]);
 
@@ -55,7 +55,41 @@ class TransactionController extends Controller
 
         $transaction = $this->transactionService->create($data);
 
-        return new TransactionResource($transaction);
+        // Check budget overage for expense transactions with a category
+        $budgetWarning = null;
+        if ($data['type'] === 'expense' && !empty($data['category_id'])) {
+            $now    = now();
+            $budget = \App\Models\Budget::with('category')
+                ->where('user_id', $data['user_id'])
+                ->where('category_id', $data['category_id'])
+                ->where('month', $now->month)
+                ->where('year',  $now->year)
+                ->first();
+
+            if ($budget) {
+                $totalSpent = \App\Models\Transaction::where('user_id', $data['user_id'])
+                    ->where('category_id', $data['category_id'])
+                    ->where('type', 'expense')
+                    ->whereNull('transfer_id')
+                    ->whereMonth('transaction_date', $now->month)
+                    ->whereYear('transaction_date',  $now->year)
+                    ->sum('amount');
+
+                if ($totalSpent > $budget->amount) {
+                    $limit = (float) $budget->amount;
+                    $budgetWarning = [
+                        'category'   => $budget->category?->name ?? 'this category',
+                        'spent'      => (float) $totalSpent,
+                        'limit'      => $limit,
+                        'overage'    => (float) $totalSpent - $limit,
+                        'percentage' => $limit > 0 ? round(((float) $totalSpent / $limit) * 100, 1) : 0,
+                    ];
+                }
+            }
+        }
+
+        return (new TransactionResource($transaction))
+            ->additional(['budget_warning' => $budgetWarning]);
     }
 
     public function show(Request $request, Transaction $transaction)
