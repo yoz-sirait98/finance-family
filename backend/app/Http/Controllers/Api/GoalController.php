@@ -33,12 +33,7 @@ class GoalController extends Controller
             'account_id' => 'nullable|exists:accounts,id',
         ]);
 
-        $goal = Goal::create([
-            ...$data,
-            'user_id' => $request->user()->id,
-            'current_amount' => 0,
-            'status' => 'active',
-        ]);
+        $goal = $this->goalService->create($request->user()->id, $data);
 
         return new GoalResource($goal->load('account'));
     }
@@ -61,7 +56,7 @@ class GoalController extends Controller
             'account_id' => 'nullable|exists:accounts,id',
         ]);
 
-        $goal->update($data);
+        $goal = $this->goalService->update($goal, $data);
 
         return new GoalResource($goal->load('account'));
     }
@@ -69,7 +64,7 @@ class GoalController extends Controller
     public function destroy(Request $request, Goal $goal)
     {
         abort_if($goal->user_id !== $request->user()->id, 403);
-        $goal->delete();
+        $this->goalService->delete($goal);
 
         return response()->json(['message' => 'Goal deleted successfully']);
     }

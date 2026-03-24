@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
 class TransactionService
 {
     public function __construct(
-        private AccountBalanceService $accountBalanceService
+        private AccountBalanceService $accountBalanceService,
+        private ActivityLogService $activityLogService
     ) {}
 
     public function list(int $userId, array $filters = [])
@@ -60,6 +61,15 @@ class TransactionService
         return DB::transaction(function () use ($data) {
             $transaction = Transaction::create($data);
             $this->accountBalanceService->updateBalance($transaction->account_id);
+            
+            $this->activityLogService->logCreate(
+                $data['user_id'],
+                'Transaction',
+                $transaction->id,
+                $transaction->toArray(),
+                $data['member_id'] ?? null
+            );
+            
             return $transaction->load(['member', 'account', 'category']);
         });
     }
@@ -67,6 +77,7 @@ class TransactionService
     public function update(Transaction $transaction, array $data): Transaction
     {
         return DB::transaction(function () use ($transaction, $data) {
+            $beforeData = $transaction->toArray();
             $oldAccountId = $transaction->account_id;
             $transaction->update($data);
 
@@ -74,6 +85,15 @@ class TransactionService
             if ($oldAccountId !== $transaction->account_id) {
                 $this->accountBalanceService->updateBalance($oldAccountId);
             }
+
+            $this->activityLogService->logUpdate(
+                $transaction->user_id,
+                'Transaction',
+                $transaction->id,
+                $beforeData,
+                $transaction->toArray(),
+                $transaction->member_id
+            );
 
             return $transaction->load(['member', 'account', 'category']);
         });
@@ -83,6 +103,9 @@ class TransactionService
     {
         DB::transaction(function () use ($transaction) {
             $accountId = $transaction->account_id;
+            $deletedData = $transaction->toArray();
+            $userId = $transaction->user_id;
+            $memberId = $transaction->member_id;
 
             // If part of a transfer, delete the paired transaction too
             if ($transaction->transfer_id) {
@@ -104,6 +127,14 @@ class TransactionService
 
             $transaction->delete();
             $this->accountBalanceService->updateBalance($accountId);
+
+            $this->activityLogService->logDelete(
+                $userId,
+                'Transaction',
+                $transaction->id,
+                $deletedData,
+                $memberId
+            );
         });
     }
 

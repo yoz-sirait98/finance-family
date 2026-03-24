@@ -8,6 +8,66 @@ use Illuminate\Support\Facades\DB;
 
 class GoalService
 {
+    public function __construct(
+        private ActivityLogService $activityLogService
+    ) {}
+
+    public function create(int $userId, array $data): Goal
+    {
+        return DB::transaction(function () use ($userId, $data) {
+            $goal = Goal::create([
+                ...$data,
+                'user_id' => $userId,
+                'current_amount' => 0,
+                'status' => 'active',
+            ]);
+
+            $this->activityLogService->logCreate(
+                $userId,
+                'Goal',
+                $goal->id,
+                $goal->toArray()
+            );
+
+            return $goal;
+        });
+    }
+
+    public function update(Goal $goal, array $data): Goal
+    {
+        return DB::transaction(function () use ($goal, $data) {
+            $beforeData = $goal->toArray();
+            $goal->update($data);
+
+            $this->activityLogService->logUpdate(
+                $goal->user_id,
+                'Goal',
+                $goal->id,
+                $beforeData,
+                $goal->toArray()
+            );
+
+            return $goal;
+        });
+    }
+
+    public function delete(Goal $goal): void
+    {
+        DB::transaction(function () use ($goal) {
+            $deletedData = $goal->toArray();
+            $userId = $goal->user_id;
+
+            $goal->delete();
+
+            $this->activityLogService->logDelete(
+                $userId,
+                'Goal',
+                $goal->id,
+                $deletedData
+            );
+        });
+    }
+
     public function contribute(Goal $goal, float $amount, ?string $note = null): GoalTransaction
     {
         return DB::transaction(function () use ($goal, $amount, $note) {

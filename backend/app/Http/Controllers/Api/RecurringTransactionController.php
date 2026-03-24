@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\RecurringTransaction;
 use App\Http\Resources\RecurringTransactionResource;
+use App\Services\RecurringTransactionService;
 use Illuminate\Http\Request;
 
 class RecurringTransactionController extends Controller
 {
+    public function __construct(
+        private RecurringTransactionService $recurringTransactionService
+    ) {}
     public function index(Request $request)
     {
         $recurring = RecurringTransaction::where('user_id', $request->user()->id)
@@ -34,10 +38,7 @@ class RecurringTransactionController extends Controller
             'end_date' => 'nullable|date|after:next_due_date',
         ]);
 
-        $recurring = RecurringTransaction::create([
-            ...$data,
-            'user_id' => $request->user()->id,
-        ]);
+        $recurring = $this->recurringTransactionService->create($data, $request->user()->id);
 
         return new RecurringTransactionResource($recurring->load(['member', 'account', 'category']));
     }
@@ -67,7 +68,7 @@ class RecurringTransactionController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
-        $recurringTransaction->update($data);
+        $recurringTransaction = $this->recurringTransactionService->update($recurringTransaction, $data);
 
         return new RecurringTransactionResource(
             $recurringTransaction->load(['member', 'account', 'category'])
@@ -77,7 +78,7 @@ class RecurringTransactionController extends Controller
     public function destroy(Request $request, RecurringTransaction $recurringTransaction)
     {
         abort_if($recurringTransaction->user_id !== $request->user()->id, 403);
-        $recurringTransaction->delete();
+        $this->recurringTransactionService->delete($recurringTransaction);
 
         return response()->json(['message' => 'Recurring transaction deleted successfully']);
     }

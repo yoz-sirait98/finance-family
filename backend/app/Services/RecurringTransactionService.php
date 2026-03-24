@@ -10,7 +10,8 @@ use Illuminate\Support\Carbon;
 class RecurringTransactionService
 {
     public function __construct(
-        private AccountBalanceService $accountBalanceService
+        private AccountBalanceService $accountBalanceService,
+        private ActivityLogService $activityLogService
     ) {}
 
     public function processDue(): int
@@ -54,5 +55,56 @@ class RecurringTransactionService
         }
 
         return $count;
+    }
+
+    public function create(array $data, int $userId): RecurringTransaction
+    {
+        $recurring = RecurringTransaction::create([
+            ...$data,
+            'user_id' => $userId,
+        ]);
+
+        $this->activityLogService->logCreate(
+            $userId,
+            'RecurringTransaction',
+            $recurring->id,
+            $recurring->toArray(),
+            $data['member_id'] ?? null
+        );
+
+        return $recurring;
+    }
+
+    public function update(RecurringTransaction $recurring, array $data): RecurringTransaction
+    {
+        $beforeData = $recurring->toArray();
+
+        $recurring->update($data);
+
+        $this->activityLogService->logUpdate(
+            $recurring->user_id,
+            'RecurringTransaction',
+            $recurring->id,
+            $beforeData,
+            $recurring->fresh()->toArray(),
+            $recurring->member_id
+        );
+
+        return $recurring;
+    }
+
+    public function delete(RecurringTransaction $recurring): void
+    {
+        $beforeData = $recurring->toArray();
+
+        $recurring->delete();
+
+        $this->activityLogService->logDelete(
+            $recurring->user_id,
+            'RecurringTransaction',
+            $recurring->id,
+            $beforeData,
+            $recurring->member_id
+        );
     }
 }

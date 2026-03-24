@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Services\AccountBalanceService;
+use App\Services\AccountService;
 use App\Http\Resources\AccountResource;
 use Illuminate\Http\Request;
 
 class AccountController extends Controller
 {
     public function __construct(
-        private AccountBalanceService $accountBalanceService
+        private AccountService $accountService
     ) {}
 
     public function index(Request $request)
@@ -32,16 +32,7 @@ class AccountController extends Controller
             'icon'            => 'nullable|string',
         ]);
 
-        $initialBalance = $data['initial_balance'] ?? 0;
-
-        $account = Account::create([
-            'user_id'         => $request->user()->id,
-            'name'            => $data['name'],
-            'type'            => $data['type'],
-            'icon'            => $data['icon'] ?? null,
-            'initial_balance' => $initialBalance,
-            'balance'         => $initialBalance,  // current balance starts equal to initial
-        ]);
+        $account = $this->accountService->create($request->user()->id, $data);
 
         return new AccountResource($account);
     }
@@ -64,13 +55,7 @@ class AccountController extends Controller
             'initial_balance' => 'sometimes|numeric|min:0',
         ]);
 
-        $account->update($data);
-
-        // If initial_balance was changed, recalculate the running balance
-        if (isset($data['initial_balance'])) {
-            $this->accountBalanceService->updateBalance($account->id);
-            $account->refresh();
-        }
+        $account = $this->accountService->update($account, $data);
 
         return new AccountResource($account);
     }
@@ -78,7 +63,7 @@ class AccountController extends Controller
     public function destroy(Request $request, Account $account)
     {
         abort_if($account->user_id !== $request->user()->id, 403);
-        $account->delete();
+        $this->accountService->delete($account);
 
         return response()->json(['message' => 'Account deleted successfully']);
     }

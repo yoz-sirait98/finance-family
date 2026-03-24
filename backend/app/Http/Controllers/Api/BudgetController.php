@@ -34,17 +34,10 @@ class BudgetController extends Controller
             'year' => 'required|integer|min:2020',
         ]);
 
-        $budget = Budget::updateOrCreate(
-            [
-                'user_id' => $request->user()->id,
-                'category_id' => $data['category_id'],
-                'month' => $data['month'],
-                'year' => $data['year'],
-            ],
-            ['amount' => $data['amount']]
-        );
+        $data['user_id'] = $request->user()->id;
+        $budget = $this->budgetService->createOrUpdate($request->user()->id, $data);
 
-        return new BudgetResource($budget->load('category'));
+        return new BudgetResource($budget);
     }
 
     public function show(Request $request, Budget $budget)
@@ -61,15 +54,15 @@ class BudgetController extends Controller
             'amount' => 'required|numeric|min:0',
         ]);
 
-        $budget->update($data);
+        $budget = $this->budgetService->update($budget, $data);
 
-        return new BudgetResource($budget->load('category'));
+        return new BudgetResource($budget);
     }
 
     public function destroy(Request $request, Budget $budget)
     {
         abort_if($budget->user_id !== $request->user()->id, 403);
-        $budget->delete();
+        $this->budgetService->delete($budget);
 
         return response()->json(['message' => 'Budget deleted successfully']);
     }

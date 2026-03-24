@@ -4,9 +4,14 @@ namespace App\Services;
 
 use App\Models\Budget;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
 
 class BudgetService
 {
+    public function __construct(
+        private ActivityLogService $activityLogService
+    ) {}
+
     public function list(int $userId, ?int $month = null, ?int $year = null)
     {
         $month = $month ?? now()->month;
@@ -56,4 +61,81 @@ class BudgetService
             ->values()
             ->toArray();
     }
+
+    public function createOrUpdate(int $userId, array $data): Budget
+    {
+        return DB::transaction(function () use ($userId, $data) {
+            $budget = Budget::where('user_id', $userId)
+                ->where('category_id', $data['category_id'])
+                ->where('month', $data['month'])
+                ->where('year', $data['year'])
+                ->first();
+
+            if ($budget) {
+                $beforeData = $budget->toArray();
+                $budget->update(['amount' => $data['amount']]);
+
+                $this->activityLogService->logUpdate(
+                    $userId,
+                    'Budget',
+                    $budget->id,
+                    $beforeData,
+                    $budget->toArray()
+                );
+            } else {
+                $budget = Budget::create([
+                    'user_id' => $userId,
+                    'category_id' => $data['category_id'],
+                    'amount' => $data['amount'],
+                    'month' => $data['month'],
+                    'year' => $data['year'],
+                ]);
+
+                $this->activityLogService->logCreate(
+                    $userId,
+                    'Budget',
+                    $budget->id,
+                    $budget->toArray()
+                );
+            }
+
+            return $budget->load('category');
+        });
+    }
+
+    public function update(Budget $budget, array $data): Budget
+    {
+        return DB::transaction(function () use ($budget, $data) {
+            $beforeData = $budget->toArray();
+            $budget->update($data);
+
+            $this->activityLogService->logUpdate(
+                $budget->user_id,
+                'Budget',
+                $budget->id,
+                $beforeData,
+                $budget->toArray()
+            );
+
+            return $budget->load('category');
+        });
+    }
+
+    public function delete(Budget $budget): void
+    {
+        DB::transaction(function () use ($budget) {
+            $deletedData = $budget->toArray();
+            $userId = $budget->user_id;
+
+            $budget->delete();
+
+            $this->activityLogService->logDelete(
+                $userId,
+                'Budget',
+                $budget->id,
+                $deletedData
+            );
+        });
+    }
 }
+
