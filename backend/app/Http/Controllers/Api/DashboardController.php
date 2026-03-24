@@ -83,5 +83,36 @@ class DashboardController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Unified reports endpoint — returns ALL report chart data in one HTTP request.
+     * Reduces 4 HTTP requests to 1 for improved performance.
+     */
+    public function reports(Request $request)
+    {
+        $userId = $request->user()->id;
+        $month  = (int) ($request->input('month') ?? 0);  // 0 = all months
+        $year   = (int) ($request->input('year')  ?? now()->year);
+        $memberId = $request->input('member_id') ? (int) $request->input('member_id') : null;
+
+        return response()->json([
+            'data' => [
+                'expense_by_category' => $this->dashboardService->getExpenseByCategory(
+                    $userId,
+                    $month ?: null,
+                    $year,
+                    $memberId
+                ),
+                'expense_by_member' => $this->dashboardService->getExpenseByMember(
+                    $userId,
+                    $month ?: null,
+                    $year,
+                    $memberId
+                ),
+                'income_vs_expense' => $this->dashboardService->getIncomeVsExpense($userId, $year),
+                'expense_trend'     => $this->dashboardService->getMonthlyExpenseTrend($userId, 6),
+            ],
+        ]);
+    }
 }
 

@@ -4,13 +4,33 @@ namespace App\Services;
 
 use App\Models\Account;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class AccountService
 {
+    private const TTL = 300; // 5 minutes
+
+    private function cacheKey(int $userId): string
+    {
+        return 'account_list_' . $userId;
+    }
+
+    private function clearCache(int $userId): void
+    {
+        Cache::forget($this->cacheKey($userId));
+    }
+
     public function __construct(
         private AccountBalanceService $accountBalanceService,
         private ActivityLogService $activityLogService
     ) {}
+
+    public function list(int $userId)
+    {
+        return Cache::remember($this->cacheKey($userId), self::TTL, function () use ($userId) {
+            return Account::where('user_id', $userId)->orderBy('name')->get();
+        });
+    }
 
     public function create(int $userId, array $data): Account
     {
@@ -33,6 +53,7 @@ class AccountService
                 $account->toArray()
             );
 
+            $this->clearCache($userId);
             return $account;
         });
     }
@@ -56,6 +77,7 @@ class AccountService
                 $account->toArray()
             );
 
+            $this->clearCache($account->user_id);
             return $account;
         });
     }
@@ -74,6 +96,8 @@ class AccountService
                 $account->id,
                 $deletedData
             );
+
+            $this->clearCache($userId);
         });
     }
 }

@@ -16,10 +16,9 @@ class GoalController extends Controller
 
     public function index(Request $request)
     {
-        $goals = Goal::where('user_id', $request->user()->id)
-            ->with(['goalTransactions', 'account'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $page = $request->query('page', 1);
+        $perPage = $request->query('per_page', 15);
+        $goals = $this->goalService->list($request->user()->id, $page, $perPage);
 
         return GoalResource::collection($goals);
     }

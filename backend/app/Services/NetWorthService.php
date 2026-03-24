@@ -5,21 +5,39 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\NetWorthHistory;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Carbon;
 
 class NetWorthService
 {
+    private const TTL = 300; // 5 minutes
+
+    private function cacheKey(int $userId, string $type = 'current'): string
+    {
+        return "networth_{$type}_{$userId}";
+    }
+
+    public function clearCache(int $userId): void
+    {
+        Cache::forget($this->cacheKey($userId, 'current'));
+        Cache::forget($this->cacheKey($userId, 'history'));
+    }
+
     public function calculateCurrentNetWorth(int $userId): float
     {
-        return (float) Account::where('user_id', $userId)->sum('balance');
+        return Cache::remember($this->cacheKey($userId, 'current'), self::TTL, function () use ($userId) {
+            return (float) Account::where('user_id', $userId)->sum('balance');
+        });
     }
 
     public function getHistory(int $userId): array
     {
-        return NetWorthHistory::where('user_id', $userId)
-            ->orderBy('recorded_at', 'asc')
-            ->get()
-            ->toArray();
+        return Cache::remember($this->cacheKey($userId, 'history'), self::TTL, function () use ($userId) {
+            return NetWorthHistory::where('user_id', $userId)
+                ->orderBy('recorded_at', 'asc')
+                ->get()
+                ->toArray();
+        });
     }
 
     public function storeMonthlySnapshot(): int

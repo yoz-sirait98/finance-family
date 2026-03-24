@@ -15,11 +15,11 @@ class RecurringTransactionController extends Controller
     ) {}
     public function index(Request $request)
     {
-        $recurring = RecurringTransaction::where('user_id', $request->user()->id)
-            ->select(['id', 'user_id', 'member_id', 'account_id', 'category_id', 'type', 'amount', 'description', 'frequency', 'next_due_date', 'end_date', 'is_active'])
-            ->with(['member', 'account', 'category'])
-            ->orderBy('next_due_date')
-            ->get();
+        $filters = $request->only([
+            'search', 'type', 'member_id', 'account_id', 'category_id', 'is_active', 'page', 'per_page',
+        ]);
+
+        $recurring = $this->recurringTransactionService->list($request->user()->id, $filters);
 
         return RecurringTransactionResource::collection($recurring);
     }

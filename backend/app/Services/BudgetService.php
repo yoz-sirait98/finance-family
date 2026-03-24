@@ -5,52 +5,70 @@ namespace App\Services;
 use App\Models\Budget;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class BudgetService
 {
+    private const TTL = 300; // 5 minutes
+
+    private function cacheKey(int $userId, ?int $month = null, ?int $year = null, int $page = 1, int $perPage = 15): string
+    {
+        return 'budget_' . $userId . '_' . ($month ?? 0) . '_' . ($year ?? 0) . '_' . $page . '_' . $perPage;
+    }
+
+    private function clearCache(int $userId): void
+    {
+        foreach (range(1, 100) as $page) {
+            for ($month = 1; $month <= 12; $month++) {
+                $year = now()->year;
+                foreach (range($year - 2, $year + 2) as $y) {
+                    Cache::forget($this->cacheKey($userId, $month, $y, $page));
+                }
+            }
+        }
+    }
+
     public function __construct(
         private ActivityLogService $activityLogService
     ) {}
 
-    public function list(int $userId, ?int $month = null, ?int $year = null)
+    public function list(int $userId, ?int $month = null, ?int $year = null, int $page = 1, int $perPage = 15)
     {
         $month = $month ?? now()->month;
         $year = $year ?? now()->year;
 
-        $budgets = Budget::where('user_id', $userId)
-            ->where('month', $month)
-            ->where('year', $year)
-            ->with('category')
-            ->get();
+        return Cache::remember($this->cacheKey($userId, $month, $year, $page, $perPage), self::TTL, function () use ($userId, $month, $year, $page, $perPage) {
+            $budgets = Budget::where('user_id', $userId)
+                ->where('month', $month)
+                ->where('year', $year)
+                ->with('category')
+                ->paginate($perPage, ['*'], 'page', $page);
 
-        if ($budgets->isEmpty()) {
-            return $budgets;
-        }
+            if ($budgets->isEmpty()) {
+                return $budgets;
+            }
 
-        // Single query to get spending for all budget categories at once
-        $categoryIds = $budgets->pluck('category_id')->filter()->unique()->values();
+            // Single query to get spending for all budget categories at once
+            $categoryIds = $budgets->pluck('category_id')->filter()->unique()->values();
 
-        $spentMap = Transaction::where('user_id', $userId)
-            ->where('type', 'expense')
-            ->whereNull('transfer_id')
-            ->whereIn('category_id', $categoryIds)
-            ->whereMonth('transaction_date', $month)
-            ->whereYear('transaction_date', $year)
-            ->selectRaw('category_id, SUM(amount) as total')
-            ->groupBy('category_id')
-            ->pluck('total', 'category_id');
+            $spentMap = Transaction::where('user_id', $userId)
+                ->where('type', 'expense')
+                ->whereNull('transfer_id')
+                ->whereIn('category_id', $categoryIds)
+                ->whereMonth('transaction_date', $month)
+                ->whereYear('transaction_date', $year)
+                ->selectRaw('category_id, SUM(amount) as total')
+                ->groupBy('category_id')
+                ->pluck('total', 'category_id');
 
-        return $budgets->map(function ($budget) use ($spentMap) {
-            $spent = (float) ($spentMap[$budget->category_id] ?? 0);
-
-            $budget->spent = $spent;
-            $budget->remaining = max(0, $budget->amount - $spent);
-            $budget->percentage = $budget->amount > 0
-                ? round(($spent / $budget->amount) * 100, 2)
-                : 0;
-            $budget->is_over_threshold = $budget->percentage >= 80;
-
-            return $budget;
+            return $budgets->map(function ($b) use ($spentMap) {
+                $spent = (float) ($spentMap[$b->category_id] ?? 0);
+                $b->spent = $spent;
+                $b->remaining = max(0, $b->amount - $spent);
+                $b->percentage = $b->amount > 0 ? round(($spent / $b->amount) * 100, 2) : 0;
+                $b->is_over_threshold = $b->percentage >= 80;
+                return $b;
+            });
         });
     }
 
@@ -99,6 +117,7 @@ class BudgetService
                 );
             }
 
+            $this->clearCache($userId);
             return $budget->load('category');
         });
     }
@@ -117,6 +136,7 @@ class BudgetService
                 $budget->toArray()
             );
 
+            $this->clearCache($budget->user_id);
             return $budget->load('category');
         });
     }
@@ -135,6 +155,8 @@ class BudgetService
                 $budget->id,
                 $deletedData
             );
+
+            $this->clearCache($userId);
         });
     }
 }

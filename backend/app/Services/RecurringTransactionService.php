@@ -5,10 +5,39 @@ namespace App\Services;
 use App\Models\RecurringTransaction;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Carbon;
 
 class RecurringTransactionService
 {
+    private const TTL = 300; // 5 minutes
+
+    private function cacheKey(int $userId, array $filters = []): string
+    {
+        $parts = [
+            'recurring',
+            $userId,
+            $filters['page'] ?? 1,
+            $filters['per_page'] ?? 15,
+            $filters['member_id'] ?? 0,
+            $filters['account_id'] ?? 0,
+            $filters['category_id'] ?? 0,
+            $filters['type'] ?? 'all',
+            $filters['is_active'] ?? 'all',
+        ];
+
+        return implode('_', $parts);
+    }
+
+    private function clearCache(int $userId): void
+    {
+        // It is a pragmatic invalidation: leverage pattern-based keys.
+        // A more advanced system may use a dedicated cache tag driver.
+        foreach (range(1, 100) as $page) {
+            Cache::forget($this->cacheKey($userId, ['page' => $page]));
+        }
+    }
+
     public function __construct(
         private AccountBalanceService $accountBalanceService,
         private ActivityLogService $activityLogService
@@ -50,11 +79,44 @@ class RecurringTransactionService
                     $recurring->update(['next_due_date' => $nextDate]);
                 }
 
+                $this->clearCache($recurring->user_id);
                 $count++;
             });
         }
 
         return $count;
+    }
+
+    public function list(int $userId, array $filters = [])
+    {
+        $page = (int) ($filters['page'] ?? 1);
+        $perPage = (int) ($filters['per_page'] ?? 15);
+
+        return Cache::remember($this->cacheKey($userId, $filters), self::TTL, function () use ($userId, $filters, $page, $perPage) {
+            $query = RecurringTransaction::where('user_id', $userId)
+                ->with(['member', 'account', 'category']);
+
+            if (!empty($filters['search'])) {
+                $query->where('description', 'like', '%' . $filters['search'] . '%');
+            }
+            if (!empty($filters['type'])) {
+                $query->where('type', $filters['type']);
+            }
+            if (!empty($filters['member_id'])) {
+                $query->where('member_id', $filters['member_id']);
+            }
+            if (!empty($filters['account_id'])) {
+                $query->where('account_id', $filters['account_id']);
+            }
+            if (!empty($filters['category_id'])) {
+                $query->where('category_id', $filters['category_id']);
+            }
+            if (isset($filters['is_active']) && $filters['is_active'] !== 'all') {
+                $query->where('is_active', boolval($filters['is_active']));
+            }
+
+            return $query->orderBy('next_due_date', 'asc')->paginate($perPage, ['*'], 'page', $page);
+        });
     }
 
     public function create(array $data, int $userId): RecurringTransaction
@@ -71,6 +133,8 @@ class RecurringTransactionService
             $recurring->toArray(),
             $data['member_id'] ?? null
         );
+
+        $this->clearCache($userId);
 
         return $recurring;
     }
@@ -90,6 +154,8 @@ class RecurringTransactionService
             $recurring->member_id
         );
 
+        $this->clearCache($recurring->user_id);
+
         return $recurring;
     }
 
@@ -106,5 +172,7 @@ class RecurringTransactionService
             $beforeData,
             $recurring->member_id
         );
+
+        $this->clearCache($recurring->user_id);
     }
 }

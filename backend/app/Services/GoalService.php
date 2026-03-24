@@ -5,12 +5,37 @@ namespace App\Services;
 use App\Models\Goal;
 use App\Models\GoalTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class GoalService
 {
+    private const TTL = 300; // 5 minutes
+
+    private function cacheKey(int $userId, int $page = 1, int $perPage = 15): string
+    {
+        return 'goal_' . $userId . '_' . $page . '_' . $perPage;
+    }
+
+    private function clearCache(int $userId): void
+    {
+        foreach (range(1, 100) as $page) {
+            Cache::forget($this->cacheKey($userId, $page));
+        }
+    }
+
     public function __construct(
         private ActivityLogService $activityLogService
     ) {}
+
+    public function list(int $userId, int $page = 1, int $perPage = 15)
+    {
+        return Cache::remember($this->cacheKey($userId, $page, $perPage), self::TTL, function () use ($userId, $page, $perPage) {
+            return Goal::where('user_id', $userId)
+                ->with(['goalTransactions', 'account'])
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
+        });
+    }
 
     public function create(int $userId, array $data): Goal
     {
@@ -29,6 +54,7 @@ class GoalService
                 $goal->toArray()
             );
 
+            $this->clearCache($userId);
             return $goal;
         });
     }
@@ -47,6 +73,7 @@ class GoalService
                 $goal->toArray()
             );
 
+            $this->clearCache($goal->user_id);
             return $goal;
         });
     }
@@ -65,6 +92,8 @@ class GoalService
                 $goal->id,
                 $deletedData
             );
+
+            $this->clearCache($userId);
         });
     }
 

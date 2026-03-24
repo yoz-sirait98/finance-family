@@ -16,9 +16,7 @@ class AccountController extends Controller
 
     public function index(Request $request)
     {
-        $accounts = Account::where('user_id', $request->user()->id)
-            ->orderBy('name')
-            ->get();
+        $accounts = $this->accountService->list($request->user()->id);
 
         return AccountResource::collection($accounts);
     }
