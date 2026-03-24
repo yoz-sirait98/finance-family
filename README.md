@@ -32,6 +32,7 @@ Repositori ini menggunakan struktur **monorepo** yang berisi aplikasi frontend d
 6.  **Transaksi Berulang (Recurring Transactions)**: Secara otomatis mencatat tagihan atau gaji yang berulang berdasarkan frekuensi mingguan, bulanan, atau tahunan.
 7.  **Dashboard Analitik**: Menyediakan laporan visual berupa grafik batang pemasukan/pengeluaran, tren 6 bulan, dan diagram pie distribusi kategori. Terintegrasi dengan filter dinamis berdasarkan *Bulan*, *Tahun*, dan *Anggota Keluarga*.
 8.  **Eksport Laporan (*Client-Side*)**: Fitur unduh laporan keuangan komprehensif ke format **CSV** dan **PDF** terstruktur yang di-generate murni dari aplikasi browser (tanpa membebani server) dan kebal terhadap bug ekstensi *Download Manager*.
+9.  **Sistem Activity Log (Audit Trail)**: Merekam secara mendetail seluruh jejak aktivitas atau perubahan (*Create, Update, Delete*) pada seluruh modul utama beserta *snapshot* data sebelum-dan-sesudah perubahan.
 
 ## Roadmap Deployment
 

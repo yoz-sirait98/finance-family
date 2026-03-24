@@ -64,4 +64,7 @@ Fungsi unduh laporan analitik bulanan ke **PDF** (menggunakan `jsPDF` + `jspdf-a
 Pendekatannya menggunakan *Native File System Access API* (`window.showSaveFilePicker`), sehingga dapat membypass total ekstensi *Download Manager* (seperti IDM) yang kerap merusak dan membajak ekspor web menjadi *file random UUID Blob*. Hal ini menjamin file yang diunduh pasti mendarat secara sempurna sesuai namanya.
 
 ### Integritas Sistem & Visual Guardrail
-Komponen transaksi dirancang sangat proaktif dalam menjaga ketertiban pencatatan finansial. Sebagai contoh, ada fitur interaktif *Budget Guardrail* – jika user akan memasukkan pengeluaran yang memecah sisa anggaran bulanannya, aplikasi akan memblokirnya dengan jendela *confirmation modal* mendetail dan mengekskalasi badge lonceng pergerakan sebelum database termutasi. Juga mendukung *Linked Sinking Fund* (mengikat target *goals* tabungan untuk mengambil sisa rasio *balance* langsung secara sinkronisasi *real-time* dari sub-akun bank fisik terkait).
+Komponen transaksi dirancang sangat proaktif dalam menjaga ketertiban pencatatan finansial. Fitur andalannya meliputi:
+1. **Budget Guardrail** – Memblokir user (melalui *confirmation modal*) jika input pengeluaran melebih sisa anggaran, lalu mengekskalasi *badge bell* notifikasi secara *real-time*.
+2. **Linked Sinking Fund** – Mengikat target tabungan (*goals*) untuk sinkron mengambil sisa rasio *balance* asli dari sub-akun bank terkait.
+3. **Audit Trail** – Seluruh perubahan data (*Create, Update, Delete*) dari modul utama secara otomatis terekam jejaknya (beserta datanya) ke *Activity Log System* backend, memastikan kontrol akuntabilitas untuk setiap member keluarga yang menggunakannya.

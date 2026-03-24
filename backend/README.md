@@ -58,6 +58,7 @@ Direktori ini berisi REST API untuk Sistem Manajemen Keuangan Keluarga yang diba
     - Pengecekan jatuh tempo transaksi berulang (`RecurringTransactionService`).
     - Agregasi analitik data masif yang telah dioptimasi dari *N+1 Query Issue* menjadi kueri agregat efisien ber-index (`DashboardService`).
     - Validasi pencegahan pembengkakan anggaran atau *Budget Guardrail* pada level sistem (`BudgetService`).
+    - *Audit Trail* tersentralisasi untuk merekam secara persisten seluruh riwayat pembuatan, pengubahan, maupun penghapusan entitas beserta datanya (`ActivityLogService`).
 
     Seluruh service berada di folder `app/Services`.
 
