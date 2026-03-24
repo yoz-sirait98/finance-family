@@ -70,7 +70,13 @@
             <div class="mb-3">
               <label class="form-label">Category</label>
               <select v-model="form.category_id" class="form-select">
-                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                <option value="">-- No Category --</option>
+                <optgroup label="Income Categories" v-if="groupedCategories.income.length">
+                  <option v-for="c in groupedCategories.income" :key="c.id" :value="c.id">{{ c.name }}</option>
+                </optgroup>
+                <optgroup label="Expense Categories" v-if="groupedCategories.expense.length">
+                  <option v-for="c in groupedCategories.expense" :key="c.id" :value="c.id">{{ c.name }}</option>
+                </optgroup>
               </select>
             </div>
             <div class="mb-3">
@@ -126,7 +132,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '../services/api';
 import { memberService } from '../services/memberService';
 import { accountService } from '../services/accountService';
@@ -137,6 +143,13 @@ const items = ref([]);
 const members = ref([]);
 const accounts = ref([]);
 const categories = ref([]);
+const groupedCategories = computed(() => {
+  const groups = { income: [], expense: [] };
+  categories.value.forEach(c => {
+    if (groups[c.type]) groups[c.type].push(c);
+  });
+  return groups;
+});
 const loading = ref(true);
 const editingId = ref(null);
 const form = ref({ type: 'expense', member_id: '', account_id: '', category_id: '', amount: 0, description: '', frequency: 'monthly', next_due_date: '', end_date: '' });
