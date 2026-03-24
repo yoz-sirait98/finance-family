@@ -1,16 +1,44 @@
 <template>
   <div class="reports-page fade-in">
-    <div class="page-header">
-      <h4>Reports</h4>
-      <p>Financial reports and analytics</p>
-    </div>
-    <div class="row g-2 mb-4">
-      <div class="col-auto">
-        <select v-model.number="selectedYear" class="form-select" @change="loadCharts">
-          <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
-        </select>
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h4>Reports</h4>
+        <p>Financial reports and analytics</p>
+      </div>
+      <!-- Export Buttons -->
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-success btn-sm" @click="exportCSV" :disabled="exporting">
+          <i class="bi bi-filetype-csv me-1"></i>Export CSV
+        </button>
+        <button class="btn btn-outline-danger btn-sm" @click="exportPDF" :disabled="exporting">
+          <span v-if="exporting" class="spinner-border spinner-border-sm me-1"></span>
+          <i v-else class="bi bi-filetype-pdf me-1"></i>Export PDF
+        </button>
       </div>
     </div>
+
+    <!-- Filter Bar -->
+    <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+      <label class="fw-semibold text-muted small me-1">Filter:</label>
+
+      <select v-model.number="selectedYear" class="form-select form-select-sm" style="width:auto" @change="loadCharts">
+        <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+      </select>
+
+      <select v-model.number="selectedMonth" class="form-select form-select-sm" style="width:auto" @change="loadCharts">
+        <option :value="0">All Months</option>
+        <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
+      </select>
+
+      <select v-model.number="selectedMember" class="form-select form-select-sm" style="width:auto" @change="loadCharts">
+        <option :value="0">All Members</option>
+        <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
+      </select>
+
+      <span class="text-muted small ms-1">— Month &amp; Member filters apply to pie charts only</span>
+    </div>
+
+    <!-- Pie Charts Row -->
     <div class="row g-3 mb-4">
       <div class="col-lg-6">
         <div class="chart-card h-100">
@@ -35,10 +63,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Annual Charts Row -->
     <div class="row g-3">
       <div class="col-lg-6">
         <div class="chart-card h-100">
-          <h6><i class="bi bi-bar-chart me-2"></i>Income vs Expense</h6>
+          <h6><i class="bi bi-bar-chart me-2"></i>Income vs Expense — {{ selectedYear }}</h6>
           <div v-if="hasBarData" style="position: relative; height: 300px;">
             <canvas ref="barChart"></canvas>
           </div>
@@ -61,10 +91,14 @@
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, nextTick, onMounted } from 'vue';
 import Chart from 'chart.js/auto';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { dashboardService } from '../services/dashboardService';
+import { memberService } from '../services/memberService';
 
 const pieChart    = ref(null);
 const memberChart = ref(null);
@@ -76,23 +110,63 @@ const hasMemberData = ref(false);
 const hasBarData    = ref(false);
 const hasLineData   = ref(false);
 
+const exporting = ref(false);
+
 const now = new Date();
-const selectedYear = ref(now.getFullYear());
-const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
+const selectedYear   = ref(now.getFullYear());
+const selectedMonth  = ref(0);
+const selectedMember = ref(0);
+
+const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
+const months = [
+  { value: 1,  label: 'January' },  { value: 2,  label: 'February' },
+  { value: 3,  label: 'March' },    { value: 4,  label: 'April' },
+  { value: 5,  label: 'May' },      { value: 6,  label: 'June' },
+  { value: 7,  label: 'July' },     { value: 8,  label: 'August' },
+  { value: 9,  label: 'September' },{ value: 10, label: 'October' },
+  { value: 11, label: 'November' }, { value: 12, label: 'December' },
+];
+const members = ref([]);
+
+// Store latest chart data for export
+const chartData = ref({ pie: [], member: [], bar: [], line: [] });
 
 let pieInstance, memberInstance, barInstance, lineInstance;
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(n) {
+  return 'Rp ' + Number(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function filterLabel() {
+  const monthName = selectedMonth.value
+    ? months.find(m => m.value === selectedMonth.value)?.label
+    : 'All Months';
+  const memberName = selectedMember.value
+    ? members.value.find(m => m.id === selectedMember.value)?.name ?? 'Unknown'
+    : 'All Members';
+  return `Year: ${selectedYear.value} | Month: ${monthName} | Member: ${memberName}`;
+}
+function filename(ext) {
+  const m = selectedMonth.value ? `-${months.find(m => m.value === selectedMonth.value)?.label}` : '';
+  return `family-finance-report-${selectedYear.value}${m}.${ext}`;
+}
+
+// ─── Load Charts ──────────────────────────────────────────────────────────────
 async function loadCharts() {
-  // Destroy existing chart instances before re-fetching
   if (pieInstance)    { pieInstance.destroy();    pieInstance    = null; }
   if (memberInstance) { memberInstance.destroy(); memberInstance = null; }
   if (barInstance)    { barInstance.destroy();    barInstance    = null; }
   if (lineInstance)   { lineInstance.destroy();   lineInstance   = null; }
 
-  // 1. Fetch all 4 chart APIs in parallel
+  const pieParams = {
+    year:      selectedYear.value,
+    month:     selectedMonth.value  || undefined,
+    member_id: selectedMember.value || undefined,
+  };
+
   const [pieRes, memberRes, barRes, lineRes] = await Promise.all([
-    dashboardService.charts('expense-by-category', { year: selectedYear.value }).catch(() => null),
-    dashboardService.charts('expense-by-member',   { year: selectedYear.value }).catch(() => null),
+    dashboardService.charts('expense-by-category', pieParams).catch(() => null),
+    dashboardService.charts('expense-by-member',   pieParams).catch(() => null),
     dashboardService.charts('income-vs-expense',   { year: selectedYear.value }).catch(() => null),
     dashboardService.charts('expense-trend').catch(() => null),
   ]);
@@ -102,70 +176,256 @@ async function loadCharts() {
   const barData    = barRes?.data?.data    ?? [];
   const lineData   = lineRes?.data?.data   ?? [];
 
-  // 2. Set data-present flags — this controls v-if on each <canvas>
+  // Store for export use
+  chartData.value = { pie: pieData, member: memberData, bar: barData, line: lineData };
+
   hasPieData.value    = pieData.length > 0;
   hasMemberData.value = memberData.length > 0;
   hasBarData.value    = barData.some(d => d.income > 0 || d.expense > 0);
   hasLineData.value   = lineData.some(d => d.expense > 0);
 
-  // 3. CRITICAL: wait for Vue to re-render and mount the canvas elements in DOM
   await nextTick();
 
-  // 4. Now safely initialize charts — refs are guaranteed non-null if data exists
   if (hasPieData.value && pieChart.value) {
     pieInstance = new Chart(pieChart.value, {
       type: 'doughnut',
-      data: {
-        labels: pieData.map(d => d.category),
-        datasets: [{ data: pieData.map(d => d.total), backgroundColor: pieData.map(d => d.color), borderWidth: 0 }],
-      },
+      data: { labels: pieData.map(d => d.category), datasets: [{ data: pieData.map(d => d.total), backgroundColor: pieData.map(d => d.color), borderWidth: 0 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } },
     });
   }
-
   if (hasMemberData.value && memberChart.value) {
     memberInstance = new Chart(memberChart.value, {
       type: 'doughnut',
-      data: {
-        labels: memberData.map(d => d.member),
-        datasets: [{ data: memberData.map(d => d.total), backgroundColor: memberData.map(d => d.color), borderWidth: 0 }],
-      },
+      data: { labels: memberData.map(d => d.member), datasets: [{ data: memberData.map(d => d.total), backgroundColor: memberData.map(d => d.color), borderWidth: 0 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } },
     });
   }
-
   if (hasBarData.value && barChart.value) {
     barInstance = new Chart(barChart.value, {
       type: 'bar',
-      data: {
-        labels: barData.map(d => d.month),
-        datasets: [
-          { label: 'Income',  data: barData.map(d => d.income),  backgroundColor: '#28a745', borderRadius: 4 },
-          { label: 'Expense', data: barData.map(d => d.expense), backgroundColor: '#dc3545', borderRadius: 4 },
-        ],
-      },
+      data: { labels: barData.map(d => d.month), datasets: [{ label: 'Income', data: barData.map(d => d.income), backgroundColor: '#28a745', borderRadius: 4 }, { label: 'Expense', data: barData.map(d => d.expense), backgroundColor: '#dc3545', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } },
     });
   }
-
   if (hasLineData.value && lineChart.value) {
     lineInstance = new Chart(lineChart.value, {
       type: 'line',
-      data: {
-        labels: lineData.map(d => d.month),
-        datasets: [{
-          label: 'Expense',
-          data: lineData.map(d => d.expense),
-          borderColor: '#dc3545',
-          backgroundColor: 'rgba(220,53,69,0.1)',
-          fill: true,
-          tension: 0.4,
-        }],
-      },
+      data: { labels: lineData.map(d => d.month), datasets: [{ label: 'Expense', data: lineData.map(d => d.expense), borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.1)', fill: true, tension: 0.4 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
     });
   }
 }
 
-onMounted(loadCharts);
+// ─── CSV Export ───────────────────────────────────────────────────────────────
+async function exportCSV() {
+  const lines = [];
+  const sep = ',';
+
+  lines.push(`Family Finance Report`);
+  lines.push(filterLabel());
+  lines.push('');
+
+  // Expense by Category
+  lines.push('=== Expense by Category ===');
+  lines.push(['Category', 'Amount'].join(sep));
+  chartData.value.pie.forEach(r => lines.push([`"${r.category}"`, r.total].join(sep)));
+  if (!chartData.value.pie.length) lines.push('No data');
+  lines.push('');
+
+  // Expense by Member
+  lines.push('=== Expense by Member ===');
+  lines.push(['Member', 'Amount'].join(sep));
+  chartData.value.member.forEach(r => lines.push([`"${r.member}"`, r.total].join(sep)));
+  if (!chartData.value.member.length) lines.push('No data');
+  lines.push('');
+
+  // Income vs Expense
+  lines.push(`=== Income vs Expense (${selectedYear.value}) ===`);
+  lines.push(['Month', 'Income', 'Expense', 'Net'].join(sep));
+  chartData.value.bar.forEach(r => lines.push([r.month, r.income, r.expense, r.income - r.expense].join(sep)));
+  if (!chartData.value.bar.length) lines.push('No data');
+  lines.push('');
+
+  // Expense Trend
+  lines.push('=== Expense Trend (Last 6 Months) ===');
+  lines.push(['Month', 'Expense'].join(sep));
+  chartData.value.line.forEach(r => lines.push([`"${r.month}"`, r.expense].join(sep)));
+  if (!chartData.value.line.length) lines.push('No data');
+
+  const content = lines.join('\n');
+  const name = filename('csv');
+
+  try {
+    // 1. Modern Native File System API (Immune to IDM/Extensions)
+    if (window.showSaveFilePicker) {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: name,
+        types: [{ description: 'CSV File', accept: { 'text/csv': ['.csv'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      return;
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return; // User cancelled dialog
+    console.error('File Picker API failed, falling back...', err);
+  }
+
+  // 2. Fallback: Base64 Data URI (also immune to IDM blob UUID bug)
+  const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content);
+  const a = document.createElement('a');
+  a.setAttribute('href', encodedUri);
+  a.setAttribute('download', name);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ─── PDF Export ───────────────────────────────────────────────────────────────
+async function exportPDF() {
+  exporting.value = true;
+  try {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 15;
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Family Finance Report', pageW / 2, y, { align: 'center' });
+    y += 8;
+
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(filterLabel(), pageW / 2, y, { align: 'center' });
+    y += 4;
+    doc.text('Generated: ' + new Date().toLocaleString('id-ID'), pageW / 2, y, { align: 'center' });
+    y += 8;
+
+    // -- Expense by Category --
+    doc.setFontSize(12);
+    doc.setTextColor(40);
+    doc.text('Expense by Category', 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [['Category', 'Amount']],
+      body: chartData.value.pie.length
+        ? chartData.value.pie.map(r => [r.category, fmt(r.total)])
+        : [['No data', '']],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [220, 53, 69] },
+      columnStyles: { 1: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc.lastAutoTable?.finalY ?? y) + 8;
+
+    // -- Expense by Member --
+    doc.setFontSize(12);
+    doc.setTextColor(40);
+    doc.text('Expense by Member', 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [['Member', 'Amount']],
+      body: chartData.value.member.length
+        ? chartData.value.member.map(r => [r.member, fmt(r.total)])
+        : [['No data', '']],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [13, 110, 253] },
+      columnStyles: { 1: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc.lastAutoTable?.finalY ?? y) + 8;
+
+    // New page for annual data
+    doc.addPage();
+    y = 15;
+
+    // -- Income vs Expense --
+    doc.setFontSize(12);
+    doc.setTextColor(40);
+    doc.text('Income vs Expense - ' + selectedYear.value, 14, y);
+    y += 2;
+    const barRows = chartData.value.bar.map(r => [
+      r.month,
+      fmt(r.income),
+      fmt(r.expense),
+      fmt(r.income - r.expense),
+    ]);
+    autoTable(doc, {
+      startY: y,
+      head: [['Month', 'Income', 'Expense', 'Net']],
+      body: barRows.length ? barRows : [['No data', '', '', '']],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [73, 80, 87] },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+      foot: barRows.length ? [[
+        'Total',
+        fmt(chartData.value.bar.reduce((s, r) => s + r.income, 0)),
+        fmt(chartData.value.bar.reduce((s, r) => s + r.expense, 0)),
+        fmt(chartData.value.bar.reduce((s, r) => s + r.income - r.expense, 0)),
+      ]] : [],
+      footStyles: { fillColor: [240, 240, 240], textColor: [40, 40, 40], fontStyle: 'bold' },
+    });
+    y = (doc.lastAutoTable?.finalY ?? y) + 8;
+
+    // -- Expense Trend --
+    doc.setFontSize(12);
+    doc.setTextColor(40);
+    doc.text('Expense Trend (Last 6 Months)', 14, y);
+    y += 2;
+    autoTable(doc, {
+      startY: y,
+      head: [['Month', 'Expense']],
+      body: chartData.value.line.length
+        ? chartData.value.line.map(r => [r.month, fmt(r.expense)])
+        : [['No data', '']],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [220, 53, 69] },
+      columnStyles: { 1: { halign: 'right' } },
+      margin: { left: 14, right: 14 },
+    });
+
+    const name = filename('pdf');
+    try {
+      // 1. Modern Native File System API
+      if (window.showSaveFilePicker) {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: name,
+          types: [{ description: 'PDF File', accept: { 'application/pdf': ['.pdf'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(doc.output('blob'));
+        await writable.close();
+        return;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('File Picker API failed, falling back...', err);
+    }
+
+    // 2. Fallback: Base64 Data URI
+    const encodedUri = doc.output('datauristring');
+    const a = document.createElement('a');
+    a.setAttribute('href', encodedUri);
+    a.setAttribute('download', name);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (err) {
+    console.error('PDF export error:', err);
+    alert('PDF export failed: ' + err.message);
+  } finally {
+    exporting.value = false;
+  }
+}
+
+onMounted(async () => {
+  const { data } = await memberService.list().catch(() => ({ data: { data: [] } }));
+  members.value = data.data;
+  await loadCharts();
+});
 </script>

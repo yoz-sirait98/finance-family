@@ -31,12 +31,14 @@ class DashboardController extends Controller
             'expense-by-category' => $this->dashboardService->getExpenseByCategory(
                 $userId,
                 $request->input('month'),
-                $request->input('year')
+                $request->input('year'),
+                $request->input('member_id')
             ),
             'expense-by-member' => $this->dashboardService->getExpenseByMember(
                 $userId,
                 $request->input('month'),
-                $request->input('year')
+                $request->input('year'),
+                $request->input('member_id')
             ),
             'income-vs-expense' => $this->dashboardService->getIncomeVsExpense(
                 $userId,

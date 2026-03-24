@@ -47,17 +47,23 @@ class DashboardService
         ];
     }
 
-    public function getExpenseByCategory(int $userId, ?int $month = null, ?int $year = null): array
+    public function getExpenseByCategory(int $userId, ?int $month = null, ?int $year = null, ?int $memberId = null): array
     {
         $month = $month ?? now()->month;
-        $year = $year ?? now()->year;
+        $year  = $year  ?? now()->year;
 
-        return Transaction::where('user_id', $userId)
+        $query = Transaction::where('user_id', $userId)
             ->where('type', 'expense')
             ->where('transfer_id', null)
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
-            ->whereNotNull('category_id')
+            ->whereNotNull('category_id');
+
+        if ($memberId) {
+            $query->where('member_id', $memberId);
+        }
+
+        return $query
             ->selectRaw('category_id, SUM(amount) as total')
             ->groupBy('category_id')
             ->with('category:id,name,color,icon')
@@ -70,17 +76,23 @@ class DashboardService
             ->toArray();
     }
 
-    public function getExpenseByMember(int $userId, ?int $month = null, ?int $year = null): array
+    public function getExpenseByMember(int $userId, ?int $month = null, ?int $year = null, ?int $memberId = null): array
     {
         $month = $month ?? now()->month;
-        $year = $year ?? now()->year;
+        $year  = $year  ?? now()->year;
 
-        return Transaction::where('user_id', $userId)
+        $query = Transaction::where('user_id', $userId)
             ->where('type', 'expense')
             ->where('transfer_id', null)
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
-            ->whereNotNull('member_id')
+            ->whereNotNull('member_id');
+
+        if ($memberId) {
+            $query->where('member_id', $memberId);
+        }
+
+        return $query
             ->selectRaw('member_id, SUM(amount) as total')
             ->groupBy('member_id')
             ->with('member:id,name')
