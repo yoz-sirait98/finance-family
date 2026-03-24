@@ -59,6 +59,7 @@ class TransactionController extends Controller
         $budgetWarning = null;
         if ($data['type'] === 'expense' && !empty($data['category_id'])) {
             $now    = now();
+            /** @var \App\Models\Budget|null $budget */
             $budget = \App\Models\Budget::with('category')
                 ->where('user_id', $data['user_id'])
                 ->where('category_id', $data['category_id'])

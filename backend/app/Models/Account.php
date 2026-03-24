@@ -15,6 +15,7 @@ class Account extends Model
         'user_id',
         'name',
         'type',
+        'initial_balance',
         'balance',
         'icon',
         'is_active',
@@ -23,6 +24,7 @@ class Account extends Model
     protected function casts(): array
     {
         return [
+            'initial_balance' => 'decimal:2',
             'balance' => 'decimal:2',
             'is_active' => 'boolean',
         ];

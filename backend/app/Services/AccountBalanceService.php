@@ -9,22 +9,22 @@ class AccountBalanceService
 {
     public function updateBalance(int $accountId): void
     {
-        \Illuminate\Support\Facades\DB::transaction(function () use ($accountId) {
-            // Apply pessimistic locking to prevent race conditions during concurrent updates
-            $account = Account::lockForUpdate()->findOrFail($accountId);
+        // lockForUpdate() requires an active outer DB::transaction (from the caller).
+        // Do NOT wrap in a nested DB::transaction here — MySQL treats it as a savepoint
+        // which can silently swallow errors and prevent the lock from working correctly.
+        $account = Account::lockForUpdate()->findOrFail($accountId);
 
-            $income = Transaction::where('account_id', $accountId)
-                ->where('type', 'income')
-                ->sum('amount');
+        $income = Transaction::where('account_id', $accountId)
+            ->where('type', 'income')
+            ->sum('amount');
 
-            $expense = Transaction::where('account_id', $accountId)
-                ->where('type', 'expense')
-                ->sum('amount');
+        $expense = Transaction::where('account_id', $accountId)
+            ->where('type', 'expense')
+            ->sum('amount');
 
-            $account->update([
-                'balance' => $account->initial_balance + $income - $expense,
-            ]);
-        });
+        $account->update([
+            'balance' => $account->initial_balance + $income - $expense,
+        ]);
     }
 
     public function recalculateAll(int $userId): void

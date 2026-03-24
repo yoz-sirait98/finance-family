@@ -16,7 +16,7 @@ class NetWorthService
 
     public function getHistory(int $userId): array
     {
-        return \App\Models\NetWorthHistory::where('user_id', $userId)
+        return NetWorthHistory::where('user_id', $userId)
             ->orderBy('recorded_at', 'asc')
             ->get()
             ->toArray();
