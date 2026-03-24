@@ -20,7 +20,7 @@ class AccountBalanceService
             ->sum('amount');
 
         $account->update([
-            'balance' => $income - $expense,
+            'balance' => $account->initial_balance + $income - $expense,
         ]);
     }
 

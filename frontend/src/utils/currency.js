@@ -6,7 +6,9 @@
 export function formatRupiah(amount) {
   if (amount === null || amount === undefined) return 'Rp 0';
   const num = Number(amount);
-  return 'Rp ' + num.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const sign = num < 0 ? '-' : '';
+  const abs = Math.abs(num).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return sign + 'Rp ' + abs;
 }
 
 /**

@@ -17,6 +17,7 @@
             </div>
           </div>
           <div class="stat-value mb-2">{{ acc.balance_formatted }}</div>
+          <div v-if="acc.initial_balance_formatted" class="small text-muted mb-2">Opening: {{ acc.initial_balance_formatted }}</div>
           <div class="d-flex gap-1">
             <button class="btn btn-sm btn-outline-primary" @click="openEdit(acc)"><i class="bi bi-pencil"></i></button>
             <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(acc)"><i class="bi bi-trash"></i></button>
@@ -47,9 +48,10 @@
                 <option value="ewallet">E-Wallet</option>
               </select>
             </div>
-            <div v-if="!editingId" class="mb-3">
+            <div class="mb-3">
               <label class="form-label">Initial Balance (Rp)</label>
-              <input v-model.number="form.balance" type="number" class="form-control" min="0" />
+              <input v-model.number="form.initial_balance" type="number" class="form-control" min="0" />
+              <div v-if="editingId" class="form-text">Changing this will recalculate the current balance.</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Icon (Bootstrap Icon class)</label>
@@ -90,7 +92,7 @@ import { useToastStore } from '../stores/toast';
 
 const accounts = ref([]);
 const editingId = ref(null);
-const form = ref({ name: '', type: 'bank', balance: 0, icon: 'bi-bank' });
+const form = ref({ name: '', type: 'bank', initial_balance: 0, icon: 'bi-bank' });
 const formError = ref('');
 
 const showModal = ref(false);
@@ -105,14 +107,14 @@ async function fetchData() {
 
 function openCreate() {
   editingId.value = null;
-  form.value = { name: '', type: 'bank', balance: 0, icon: 'bi-bank' };
+  form.value = { name: '', type: 'bank', initial_balance: 0, icon: 'bi-bank' };
   formError.value = '';
   showModal.value = true;
 }
 
 function openEdit(a) {
   editingId.value = a.id;
-  form.value = { name: a.name, type: a.type, icon: a.icon || '' };
+  form.value = { name: a.name, type: a.type, icon: a.icon || '', initial_balance: a.initial_balance ?? 0 };
   formError.value = '';
   showModal.value = true;
 }

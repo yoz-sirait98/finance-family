@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useBudgetStore } from '../stores/budgets';
@@ -182,14 +182,7 @@ async function refreshAlerts() {
   } catch {}
 }
 
-// Re-fetch every time the user navigates to a different page
-watch(() => route.path, () => {
-  refreshAlerts();
-});
-
 function toggleBell() {
-  // Also refresh when user opens the bell
-  refreshAlerts();
   bellOpen.value = !bellOpen.value;
   userOpen.value = false;
 }

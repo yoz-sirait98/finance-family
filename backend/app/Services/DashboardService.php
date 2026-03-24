@@ -15,19 +15,18 @@ class DashboardService
         $month = $month ?? now()->month;
         $year = $year ?? now()->year;
 
-        $income = Transaction::where('user_id', $userId)
-            ->where('type', 'income')
+        // Single grouped query for income & expense instead of 2 separate SUM queries
+        $monthlyTotals = Transaction::where('user_id', $userId)
+            ->whereIn('type', ['income', 'expense'])
             ->where('transfer_id', null)
             ->whereMonth('transaction_date', $month)
             ->whereYear('transaction_date', $year)
-            ->sum('amount');
+            ->selectRaw('type, SUM(amount) as total')
+            ->groupBy('type')
+            ->pluck('total', 'type');
 
-        $expense = Transaction::where('user_id', $userId)
-            ->where('type', 'expense')
-            ->where('transfer_id', null)
-            ->whereMonth('transaction_date', $month)
-            ->whereYear('transaction_date', $year)
-            ->sum('amount');
+        $income  = (float) ($monthlyTotals['income']  ?? 0);
+        $expense = (float) ($monthlyTotals['expense'] ?? 0);
 
         $totalBalance = Account::where('user_id', $userId)
             ->where('is_active', true)
@@ -38,13 +37,13 @@ class DashboardService
             ->count();
 
         return [
-            'total_balance' => (float) $totalBalance,
-            'monthly_income' => (float) $income,
-            'monthly_expense' => (float) $expense,
-            'monthly_net' => (float) ($income - $expense),
-            'active_goals' => $activeGoals,
-            'month' => $month,
-            'year' => $year,
+            'total_balance'   => (float) $totalBalance,
+            'monthly_income'  => $income,
+            'monthly_expense' => $expense,
+            'monthly_net'     => $income - $expense,
+            'active_goals'    => $activeGoals,
+            'month'           => $month,
+            'year'            => $year,
         ];
     }
 
@@ -65,8 +64,8 @@ class DashboardService
             ->get()
             ->map(fn ($item) => [
                 'category' => $item->category->name ?? 'Uncategorized',
-                'color' => $item->category->color ?? '#6c757d',
-                'total' => (float) $item->total,
+                'color'    => $item->category->color ?? '#6c757d',
+                'total'    => (float) $item->total,
             ])
             ->toArray();
     }
@@ -90,8 +89,8 @@ class DashboardService
                 $colors = ['#0d6efd', '#6f42c1', '#d63384', '#fd7e14', '#20c997', '#0dcaf0'];
                 return [
                     'member' => $item->member->name ?? 'Unknown',
-                    'color' => $colors[$index % count($colors)],
-                    'total' => (float) $item->total,
+                    'color'  => $colors[$index % count($colors)],
+                    'total'  => (float) $item->total,
                 ];
             })
             ->toArray();
@@ -100,27 +99,27 @@ class DashboardService
     public function getIncomeVsExpense(int $userId, ?int $year = null): array
     {
         $year = $year ?? now()->year;
+
+        // Single grouped query instead of 24 individual SUM queries
+        $rows = Transaction::where('user_id', $userId)
+            ->whereIn('type', ['income', 'expense'])
+            ->where('transfer_id', null)
+            ->whereYear('transaction_date', $year)
+            ->selectRaw('MONTH(transaction_date) as m, type, SUM(amount) as total')
+            ->groupBy('m', 'type')
+            ->get()
+            ->groupBy('m');
+
         $data = [];
-
         for ($m = 1; $m <= 12; $m++) {
-            $income = Transaction::where('user_id', $userId)
-                ->where('type', 'income')
-                ->where('transfer_id', null)
-                ->whereMonth('transaction_date', $m)
-                ->whereYear('transaction_date', $year)
-                ->sum('amount');
-
-            $expense = Transaction::where('user_id', $userId)
-                ->where('type', 'expense')
-                ->where('transfer_id', null)
-                ->whereMonth('transaction_date', $m)
-                ->whereYear('transaction_date', $year)
-                ->sum('amount');
+            $monthRows = $rows->get($m, collect());
+            $income  = (float) ($monthRows->firstWhere('type', 'income')?->total  ?? 0);
+            $expense = (float) ($monthRows->firstWhere('type', 'expense')?->total ?? 0);
 
             $data[] = [
-                'month' => Carbon::create($year, $m, 1)->format('M'),
-                'income' => (float) $income,
-                'expense' => (float) $expense,
+                'month'   => Carbon::create($year, $m, 1)->format('M'),
+                'income'  => $income,
+                'expense' => $expense,
             ];
         }
 
@@ -129,22 +128,27 @@ class DashboardService
 
     public function getMonthlyExpenseTrend(int $userId, int $months = 6): array
     {
-        $data = [];
-        $now = now();
+        $now   = now();
+        $start = $now->copy()->subMonths($months - 1)->startOfMonth();
 
+        // Single grouped query instead of 6 individual SUM queries
+        $rows = Transaction::where('user_id', $userId)
+            ->where('type', 'expense')
+            ->where('transfer_id', null)
+            ->where('transaction_date', '>=', $start)
+            ->selectRaw('YEAR(transaction_date) as y, MONTH(transaction_date) as m, SUM(amount) as total')
+            ->groupBy('y', 'm')
+            ->get()
+            ->keyBy(fn ($r) => $r->y . '-' . $r->m);
+
+        $data = [];
         for ($i = $months - 1; $i >= 0; $i--) {
             $date = $now->copy()->subMonths($i);
-
-            $expense = Transaction::where('user_id', $userId)
-                ->where('type', 'expense')
-                ->where('transfer_id', null)
-                ->whereMonth('transaction_date', $date->month)
-                ->whereYear('transaction_date', $date->year)
-                ->sum('amount');
+            $key  = $date->year . '-' . $date->month;
 
             $data[] = [
-                'month' => $date->format('M Y'),
-                'expense' => (float) $expense,
+                'month'   => $date->format('M Y'),
+                'expense' => (float) ($rows->get($key)?->total ?? 0),
             ];
         }
 
