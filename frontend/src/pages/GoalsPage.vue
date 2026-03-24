@@ -9,8 +9,11 @@
         <div class="stat-card">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
-              <h6 class="fw-bold mb-0">{{ g.name }}</h6>
-              <small class="text-muted">{{ g.deadline || 'No deadline' }}</small>
+              <h6 class="fw-bold mb-0">
+                {{ g.name }}
+              </h6>
+              <div v-if="g.account_id" class="badge bg-info mt-1 mb-1 me-1"><i class="bi bi-link-45deg"></i> {{ g.account_name }}</div>
+              <small class="text-muted d-block">{{ g.deadline || 'No deadline' }}</small>
             </div>
             <span class="badge" :class="g.status === 'active' ? 'bg-primary' : g.status === 'completed' ? 'bg-success' : 'bg-secondary'">
               {{ g.status }}
@@ -25,7 +28,7 @@
           </div>
           <div class="small text-muted mb-3">{{ g.progress_percentage }}% complete</div>
           <div class="d-flex gap-1">
-            <button v-if="g.status === 'active'" class="btn btn-sm btn-primary-gradient" @click="openContribute(g)"><i class="bi bi-plus-circle me-1"></i>Contribute</button>
+            <button v-if="g.status === 'active' && !g.account_id" class="btn btn-sm btn-primary-gradient" @click="openContribute(g)"><i class="bi bi-plus-circle me-1"></i>Contribute</button>
             <button class="btn btn-sm btn-outline-primary" @click="openEdit(g)"><i class="bi bi-pencil"></i></button>
             <button class="btn btn-sm btn-outline-danger" @click="confirmDelete(g)"><i class="bi bi-trash"></i></button>
           </div>
@@ -50,6 +53,14 @@
             <div class="mb-3">
               <label class="form-label">Target Amount (Rp)</label>
               <input v-model.number="form.target_amount" type="number" class="form-control" min="1" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Link to Account (Optional)</label>
+              <select v-model="form.account_id" class="form-select">
+                <option value="">-- No Account Linked --</option>
+                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+              </select>
+              <div class="form-text small">If linked, goal progress automatically mirrors the account balance.</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Deadline</label>
@@ -112,9 +123,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { goalService } from '../services/goalService';
+import { accountService } from '../services/accountService';
 import { useToastStore } from '../stores/toast';
 
 const goals = ref([]);
+const accounts = ref([]);
 const editingId = ref(null);
 const form = ref({ name: '', target_amount: 0, deadline: '' });
 const formError = ref('');
@@ -135,14 +148,14 @@ async function fetchData() {
 
 function openCreate() {
   editingId.value = null;
-  form.value = { name: '', target_amount: 0, deadline: '' };
+  form.value = { name: '', target_amount: 0, deadline: '', account_id: '' };
   formError.value = '';
   showModal.value = true;
 }
 
 function openEdit(g) {
   editingId.value = g.id;
-  form.value = { name: g.name, target_amount: g.target_amount, deadline: g.deadline_raw || '' };
+  form.value = { name: g.name, target_amount: g.target_amount, deadline: g.deadline_raw || '', account_id: g.account_id || '' };
   formError.value = '';
   showModal.value = true;
 }
@@ -200,5 +213,12 @@ async function doDelete() {
   }
 }
 
-onMounted(fetchData);
+onMounted(async () => {
+  const [goalsRes, accRes] = await Promise.all([
+    goalService.list().catch(() => ({ data: { data: [] } })),
+    accountService.list().catch(() => ({ data: { data: [] } }))
+  ]);
+  goals.value = goalsRes.data.data;
+  accounts.value = accRes.data.data;
+});
 </script>

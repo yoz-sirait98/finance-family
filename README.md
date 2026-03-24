@@ -27,10 +27,11 @@ Repositori ini menggunakan struktur **monorepo** yang berisi aplikasi frontend d
 1.  **Manajemen Anggota**: Menambahkan anggota keluarga (Ayah, Ibu, Anak, dll.) dan mengaitkan transaksi kepada masing-masing anggota.
 2.  **Manajemen Akun**: Melacak saldo pada kas, rekening bank, dan e-wallet.
 3.  **Pencatatan Transaksi**: Mencatat pemasukan, pengeluaran, serta transfer antar akun keluarga menggunakan sistem dual-entry.
-4.  **Anggaran (Budget)**: Menentukan batas pengeluaran bulanan per kategori dengan progress bar real-time serta notifikasi ketika penggunaan mencapai 80%.
-5.  **Target Tabungan (Saving Goals)**: Melacak jumlah target dan tenggat waktu untuk pembelian atau tujuan dana tertentu.
+4.  **Anggaran (Budget)**: Menentukan batas pengeluaran bulanan per kategori dengan progress bar real-time serta **Budget Guardrail** (peringatan modal interaktif sebelum menyimpan transaksi yang melebihi sisa anggaran) dan notifikasi *bell* yang terupdate secara langsung.
+5.  **Target Tabungan (Saving Goals)**: Melacak target dana. Kini dilengkapi fitur **Linked Goal Pockets** yang memungkinkan pengguna menghubungkan target tabungan langsung ke saldo akun rekening fisik (seperti Bank Jago Pocket) secara otomatis.
 6.  **Transaksi Berulang (Recurring Transactions)**: Secara otomatis mencatat tagihan atau gaji yang berulang berdasarkan frekuensi mingguan, bulanan, atau tahunan.
-7.  **Dashboard Analitik**: Menyediakan laporan visual berupa grafik batang pemasukan/pengeluaran, tren 6 bulan, dan diagram pie distribusi kategori.
+7.  **Dashboard Analitik**: Menyediakan laporan visual berupa grafik batang pemasukan/pengeluaran, tren 6 bulan, dan diagram pie distribusi kategori. Terintegrasi dengan filter dinamis berdasarkan *Bulan*, *Tahun*, dan *Anggota Keluarga*.
+8.  **Eksport Laporan (*Client-Side*)**: Fitur unduh laporan keuangan komprehensif ke format **CSV** dan **PDF** terstruktur yang di-generate murni dari aplikasi browser (tanpa membebani server) dan kebal terhadap bug ekstensi *Download Manager*.
 
 ## Roadmap Deployment
 

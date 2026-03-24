@@ -16,6 +16,7 @@ class Goal extends Model
         'name',
         'target_amount',
         'current_amount',
+        'account_id',
         'deadline',
         'status',
     ];
@@ -39,10 +40,16 @@ class Goal extends Model
         return $this->hasMany(GoalTransaction::class);
     }
 
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
     public function getProgressPercentageAttribute(): float
     {
         if ($this->target_amount <= 0) return 0;
-        return min(100, round(($this->current_amount / $this->target_amount) * 100, 2));
+        $current = $this->account_id ? ($this->account->balance ?? 0) : $this->current_amount;
+        return min(100, round(($current / $this->target_amount) * 100, 2));
     }
 
     public function scopeActive($query)

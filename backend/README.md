@@ -52,10 +52,12 @@ Direktori ini berisi REST API untuk Sistem Manajemen Keuangan Keluarga yang diba
 
 *   **Authentication**: Menggunakan Laravel Sanctum yang menghasilkan Bearer Token dalam bentuk plain-text. Semua route di bawah `/api/*` membutuhkan token ini kecuali `/api/auth/login` dan `/api/auth/register`.
 
-*   **Services Pattern**: Controller dibuat tetap ringan. Logika bisnis ditempatkan pada service layer, seperti:
-    - Perhitungan ulang saldo akun secara berantai (`AccountBalanceService`)
-    - Transfer dual-entry (`TransactionService`)
-    - Pengecekan jatuh tempo transaksi berulang (`RecurringTransactionService`)
+*   **Services Pattern**: Controller dibuat tetap ringan. Logika bisnis ditempatkan pada service layer secara terpusat, seperti:
+    - Perhitungan ulang saldo akun (`AccountBalanceService`) dengan mitigasi *Transfer Balance Wipe Bug*.
+    - Transfer dual-entry dan manipulasi mutasi database secara atomic (`TransactionService`).
+    - Pengecekan jatuh tempo transaksi berulang (`RecurringTransactionService`).
+    - Agregasi analitik data masif yang telah dioptimasi dari *N+1 Query Issue* menjadi kueri agregat efisien ber-index (`DashboardService`).
+    - Validasi pencegahan pembengkakan anggaran atau *Budget Guardrail* pada level sistem (`BudgetService`).
 
     Seluruh service berada di folder `app/Services`.
 

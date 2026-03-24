@@ -53,6 +53,15 @@ Pola standar yang digunakan di sini adalah:
 - **State lokal komponen** untuk data form yang reaktif
 - **Global state Pinia** khusus untuk:
   - Authentication (`auth.js`)
-  - Toast Notifications (`toast.js`)
+  - Notifikasi Toast real-time (`toast.js`)
+  - State notifikasi peringatan anggaran/bell (`budget.js`)
 
-Pemanggilan API dilakukan langsung di dalam komponen secara berurutan menggunakan layer service Axios yang telah diabstraksi (`frontend/src/services/*`).
+Pemanggilan API dilakukan langsung di dalam komponen secara berurutan menggunakan layer service Axios yang telah diabstraksi (`frontend/src/services/*`). Fitur *Promise.all* diimplementasikan secara ekstensif pada rendering dashboard untuk mengeliminasi latensi.
+
+### Eksport Laporan Client-Side
+Fungsi unduh laporan analitik bulanan ke **PDF** (menggunakan `jsPDF` + `jspdf-autotable`) maupun **CSV** dilakukan murni eksplisit dengan 100% Javascript di sisi *browser* untuk mencegah kelebihan muatan di sisi *backend*. 
+
+Pendekatannya menggunakan *Native File System Access API* (`window.showSaveFilePicker`), sehingga dapat membypass total ekstensi *Download Manager* (seperti IDM) yang kerap merusak dan membajak ekspor web menjadi *file random UUID Blob*. Hal ini menjamin file yang diunduh pasti mendarat secara sempurna sesuai namanya.
+
+### Integritas Sistem & Visual Guardrail
+Komponen transaksi dirancang sangat proaktif dalam menjaga ketertiban pencatatan finansial. Sebagai contoh, ada fitur interaktif *Budget Guardrail* – jika user akan memasukkan pengeluaran yang memecah sisa anggaran bulanannya, aplikasi akan memblokirnya dengan jendela *confirmation modal* mendetail dan mengekskalasi badge lonceng pergerakan sebelum database termutasi. Juga mendukung *Linked Sinking Fund* (mengikat target *goals* tabungan untuk mengambil sisa rasio *balance* langsung secara sinkronisasi *real-time* dari sub-akun bank fisik terkait).
