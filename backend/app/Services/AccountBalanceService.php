@@ -22,8 +22,16 @@ class AccountBalanceService
             ->where('type', 'expense')
             ->sum('amount');
 
+        $newBalance = $account->initial_balance + $income - $expense;
+
+        if ($newBalance < 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'account' => "Action denied: The balance of account '{$account->name}' would drop below zero."
+            ]);
+        }
+
         $account->update([
-            'balance' => $account->initial_balance + $income - $expense,
+            'balance' => $newBalance,
         ]);
     }
 
