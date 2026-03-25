@@ -13,3 +13,8 @@ Schedule::command('transactions:process-recurring')->daily();
 
 // Record net worth snapshot on the first day of every month at midnight
 Schedule::call(fn () => app(\App\Services\NetWorthService::class)->storeMonthlySnapshot())->monthly();
+
+// Clean up stale activity logs automatically every night
+Schedule::command('model:prune', [
+    '--model' => [\App\Models\ActivityLog::class],
+])->daily();
