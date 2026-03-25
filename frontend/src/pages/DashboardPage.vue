@@ -222,7 +222,7 @@ async function loadAll() {
 
   if (hasPieData.value && pieChart.value) {
     pieInstance = new Chart(pieChart.value, {
-      type: 'doughnut',
+      type: 'pie',
       data: {
         labels: pieData.map(d => d.category),
         datasets: [{ data: pieData.map(d => d.total), backgroundColor: pieData.map(d => d.color), borderWidth: 0 }],

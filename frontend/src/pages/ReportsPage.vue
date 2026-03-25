@@ -181,7 +181,7 @@ async function loadCharts() {
   if (hasPieData.value && pieChart.value) {
     if (pieInstance) { pieInstance.destroy(); }
     pieInstance = new Chart(pieChart.value, {
-      type: 'doughnut',
+      type: 'pie',
       data: { labels: chartData.value.pie.map(d => d.category), datasets: [{ data: chartData.value.pie.map(d => d.total), backgroundColor: chartData.value.pie.map(d => d.color), borderWidth: 0 }] },
       options: { 
         responsive: true, maintainAspectRatio: false, 
