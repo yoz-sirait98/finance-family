@@ -15,13 +15,18 @@
 
     <!-- AI Financial Insights -->
     <div v-if="insights.length" class="mb-4">
-      <h6 class="fw-bold mb-2"><i class="bi bi-stars text-warning me-2"></i>Financial Insight</h6>
-      <div class="row g-2">
+      <div class="d-flex align-items-center mb-2" style="cursor: pointer; user-select: none; width: fit-content;" @click="showInsights = !showInsights">
+        <h6 class="fw-bold mb-0"><i class="bi bi-stars text-warning me-2"></i>Financial Insight</h6>
+        <i class="bi ms-2 text-muted" :class="showInsights ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+        <span v-if="!showInsights" class="badge bg-primary-subtle text-primary ms-2 rounded-pill">{{ insights.length }} new</span>
+      </div>
+      
+      <div v-show="showInsights" class="row g-2" style="animation: fadeIn 0.3s ease-in-out">
         <div v-for="(insight, index) in insights" :key="index" class="col-md-4">
-          <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)); border-left: 3px solid #667eea !important;">
+          <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)); border-left: 3px solid #667eea !important;">
             <div class="card-body p-2 d-flex align-items-center">
-              <i class="bi bi-lightbulb text-primary mx-2 fs-5"></i>
-              <p class="mb-0" style="font-size: 0.8rem; line-height: 1.2;">{{ insight }}</p>
+              <!-- No duplicate lightbulb since the text already has emojis, but we keep the container clean -->
+              <p class="mb-0 ms-2 fw-medium text-dark" style="font-size: 0.85rem; line-height: 1.3;">{{ insight }}</p>
             </div>
           </div>
         </div>
@@ -148,6 +153,7 @@ import { netWorthService } from '../services/netWorthService';
 import { formatRupiah } from '../utils/currency';
 
 const now = new Date();
+const showInsights = ref(false);
 
 // Filter state
 const selectedMonth = ref(now.getMonth() + 1);
