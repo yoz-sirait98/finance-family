@@ -153,11 +153,6 @@ function filename(ext) {
 
 // ─── Load Charts ──────────────────────────────────────────────────────────────
 async function loadCharts() {
-  if (pieInstance)    { pieInstance.destroy();    pieInstance    = null; }
-  if (memberInstance) { memberInstance.destroy(); memberInstance = null; }
-  if (barInstance)    { barInstance.destroy();    barInstance    = null; }
-  if (lineInstance)   { lineInstance.destroy();   lineInstance   = null; }
-
   const params = {
     year:      selectedYear.value,
     month:     selectedMonth.value  || undefined,
@@ -184,31 +179,46 @@ async function loadCharts() {
   await nextTick();
 
   if (hasPieData.value && pieChart.value) {
+    if (pieInstance) { pieInstance.destroy(); }
     pieInstance = new Chart(pieChart.value, {
       type: 'doughnut',
       data: { labels: chartData.value.pie.map(d => d.category), datasets: [{ data: chartData.value.pie.map(d => d.total), backgroundColor: chartData.value.pie.map(d => d.color), borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 800, easing: 'easeInOutQuart' }, plugins: { legend: { position: 'bottom' } } },
+      options: { 
+        responsive: true, maintainAspectRatio: false, 
+        animation: { animateScale: true, animateRotate: true }, 
+        plugins: { legend: { position: 'bottom', labels: { padding: 16 } } } 
+      },
     });
   }
+  
   if (hasMemberData.value && memberChart.value) {
+    if (memberInstance) { memberInstance.destroy(); }
     memberInstance = new Chart(memberChart.value, {
       type: 'doughnut',
       data: { labels: chartData.value.member.map(d => d.member), datasets: [{ data: chartData.value.member.map(d => d.total), backgroundColor: chartData.value.member.map(d => d.color), borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 800, easing: 'easeInOutQuart' }, plugins: { legend: { position: 'bottom' } } },
+      options: { 
+        responsive: true, maintainAspectRatio: false, 
+        animation: { animateScale: true, animateRotate: true }, 
+        plugins: { legend: { position: 'bottom', labels: { padding: 16 } } } 
+      },
     });
   }
+  
   if (hasBarData.value && barChart.value) {
+    if (barInstance) { barInstance.destroy(); }
     barInstance = new Chart(barChart.value, {
       type: 'bar',
       data: { labels: chartData.value.bar.map(d => d.month), datasets: [{ label: 'Income', data: chartData.value.bar.map(d => d.income), backgroundColor: '#28a745', borderRadius: 4 }, { label: 'Expense', data: chartData.value.bar.map(d => d.expense), backgroundColor: '#dc3545', borderRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 800, easing: 'easeInOutQuart' }, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } },
     });
   }
+  
   if (hasLineData.value && lineChart.value) {
+    if (lineInstance) { lineInstance.destroy(); }
     lineInstance = new Chart(lineChart.value, {
       type: 'line',
       data: { labels: chartData.value.line.map(d => d.month), datasets: [{ label: 'Expense', data: chartData.value.line.map(d => d.expense), borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.1)', fill: true, tension: 0.4 }] },
-      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 800, easing: 'easeInOutQuart' }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
     });
   }
 }
