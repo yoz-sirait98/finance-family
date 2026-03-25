@@ -75,8 +75,10 @@ class DashboardController extends Controller
                 'expense_trend'      => $this->dashboardService->getMonthlyExpenseTrend($userId, 6),
                 'insights'           => array_values(array_filter([
                     $this->insightService->getMonthlyComparison($userId),
-                    $this->insightService->getTopSpendingCategories($userId),
-                    $this->insightService->getBudgetRiskPrediction($userId),
+                    $this->insightService->getSavingsRate($userId),
+                    $this->insightService->getExpenseAnomaly($userId),
+                    $this->insightService->getHighestSpendingDay($userId),
+                    $this->insightService->getWeekendVsWeekdaySpending($userId),
                 ])),
                 'net_worth_current'  => $this->netWorthService->calculateCurrentNetWorth($userId),
                 'net_worth_history'  => $this->netWorthService->getHistory($userId),

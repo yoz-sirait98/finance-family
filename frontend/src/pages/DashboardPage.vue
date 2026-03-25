@@ -15,7 +15,7 @@
 
     <!-- AI Financial Insights -->
     <div v-if="insights.length" class="mb-4">
-      <h6 class="fw-bold mb-2"><i class="bi bi-stars text-warning me-2"></i>Financial Intelligence</h6>
+      <h6 class="fw-bold mb-2"><i class="bi bi-stars text-warning me-2"></i>Financial Insight</h6>
       <div class="row g-2">
         <div v-for="(insight, index) in insights" :key="index" class="col-md-4">
           <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)); border-left: 3px solid #667eea !important;">

@@ -32,8 +32,10 @@ class DashboardService
         }
         Cache::forget($this->cacheKey('line', $userId, 6));
         Cache::forget("user_{$userId}_insight_monthly_comp");
-        Cache::forget("user_{$userId}_insight_top_category");
-        Cache::forget("user_{$userId}_insight_budget_risk");
+        Cache::forget("user_{$userId}_insight_savings_rate");
+        Cache::forget("user_{$userId}_insight_expense_anomaly");
+        Cache::forget("user_{$userId}_insight_highest_day");
+        Cache::forget("user_{$userId}_insight_weekend_vs_weekday");
         Cache::forget("networth_current_{$userId}");
         Cache::forget("networth_history_{$userId}");
     }

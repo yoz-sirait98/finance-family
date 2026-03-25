@@ -31,107 +31,125 @@ class InsightService
                 ->sum('amount');
 
             if ($lastExpense == 0) {
-                return null; // Not enough history to compare
+                return null;
             }
 
             $diff = $currentExpense - $lastExpense;
             $pct = round((abs($diff) / $lastExpense) * 100);
 
             if ($diff > 0) {
-                return "Your spending increased {$pct}% from last month.";
+                return "📈 Spending up {$pct}% vs last month.";
             } elseif ($diff < 0) {
-                return "Your spending decreased {$pct}% from last month. Great job!";
+                return "📉 Spending down {$pct}% vs last month. 👍";
             }
 
-            return "Your spending is exactly the same as last month.";
+            return "Spending unchanged vs last month.";
         });
     }
 
-    public function getTopSpendingCategories(int $userId): ?string
+    public function getSavingsRate(int $userId): ?string
     {
-        return Cache::remember("user_{$userId}_insight_top_category", now()->addMinutes(30), function () use ($userId) {
-            $topCategory = Transaction::where('user_id', $userId)
+        return Cache::remember("user_{$userId}_insight_savings_rate", now()->addMinutes(30), function () use ($userId) {
+            $month = Carbon::now()->month;
+            $year = Carbon::now()->year;
+
+            $income = Transaction::where('user_id', $userId)->where('type', 'income')->whereNull('transfer_id')->whereMonth('transaction_date', $month)->whereYear('transaction_date', $year)->sum('amount');
+            $expense = Transaction::where('user_id', $userId)->where('type', 'expense')->whereNull('transfer_id')->whereMonth('transaction_date', $month)->whereYear('transaction_date', $year)->sum('amount');
+
+            if ($income == 0) {
+                return null;
+            }
+
+            $saved = $income - $expense;
+            $rate = round(($saved / $income) * 100);
+
+            if ($rate >= 20) {
+                return "🌟 Saved {$rate}% of income!";
+            } elseif ($rate > 0) {
+                return "Saved {$rate}%. Goal: 20%.";
+            } else {
+                return "⚠️ Spent more than earned this month.";
+            }
+        });
+    }
+
+    public function getExpenseAnomaly(int $userId): ?string
+    {
+        return Cache::remember("user_{$userId}_insight_expense_anomaly", now()->addMinutes(30), function () use ($userId) {
+            $avgExpense = Transaction::where('user_id', $userId)
+                ->where('type', 'expense')
+                ->whereNull('transfer_id')
+                ->avg('amount') ?? 0;
+
+            if ($avgExpense == 0) {
+                return null;
+            }
+
+            $recentLarge = Transaction::where('user_id', $userId)
                 ->where('type', 'expense')
                 ->whereNull('transfer_id')
                 ->whereMonth('transaction_date', Carbon::now()->month)
                 ->whereYear('transaction_date', Carbon::now()->year)
-                ->select('category_id', DB::raw('SUM(amount) as total'))
-                ->groupBy('category_id')
-                ->orderByDesc('total')
-                ->with('category')
+                ->where('amount', '>', $avgExpense * 3)
+                ->orderBy('transaction_date', 'desc')
                 ->first();
 
-            if (!$topCategory) {
-                return null;
+            if ($recentLarge) {
+                $multiplier = round($recentLarge->amount / $avgExpense, 1);
+                $desc = $recentLarge->description ?: 'Unknown';
+                $fmt = "Rp " . number_format($recentLarge->amount, 0, ',', '.');
+                return "🔎 Anomaly: {$desc} ({$fmt}) is {$multiplier}x above average.";
             }
 
-            $totalExpense = Transaction::where('user_id', $userId)
-                ->where('type', 'expense')
-                ->whereNull('transfer_id')
-                ->whereMonth('transaction_date', Carbon::now()->month)
-                ->whereYear('transaction_date', Carbon::now()->year)
-                ->sum('amount');
-
-            if ($totalExpense == 0) {
-                return null;
-            }
-
-            $pct = round(($topCategory->total / $totalExpense) * 100);
-            $name = $topCategory->category ? $topCategory->category->name : 'Unknown';
-
-            return "{$name} category dominates {$pct}% of your expenses.";
+            return null;
         });
     }
 
-    public function getBudgetRiskPrediction(int $userId): ?string
+    public function getHighestSpendingDay(int $userId): ?string
     {
-        // Don't cache budget risk for 30 minutes, make it shorter (e.g. 5 minutes) since it involves current day pacing
-        return Cache::remember("user_{$userId}_insight_budget_risk", now()->addMinutes(5), function () use ($userId) {
-            $now = Carbon::now();
-            $daysInMonth = $now->daysInMonth;
-            $currentDay = $now->day;
+        return Cache::remember("user_{$userId}_insight_highest_day", now()->addMinutes(30), function () use ($userId) {
+            $topDay = Transaction::where('user_id', $userId)
+                ->where('type', 'expense')
+                ->whereNull('transfer_id')
+                ->selectRaw('DAYNAME(transaction_date) as day, SUM(amount) as total')
+                ->groupBy('day')
+                ->orderByDesc('total')
+                ->first();
 
-            $budgets = Budget::where('user_id', $userId)
-                ->where('month', $now->month)
-                ->where('year', $now->year)
-                ->get();
-
-            if ($budgets->isEmpty()) {
-                return null; // No budgets set
-            }
-
-            $totalBudget = $budgets->sum('amount');
-            if ($totalBudget == 0) {
+            if (!$topDay || !$topDay->day) {
                 return null;
             }
 
-            $spentInBudgets = Transaction::where('user_id', $userId)
+            return "📅 {$topDay->day}s are your highest spending days.";
+        });
+    }
+
+    public function getWeekendVsWeekdaySpending(int $userId): ?string
+    {
+        return Cache::remember("user_{$userId}_insight_weekend_vs_weekday", now()->addMinutes(30), function () use ($userId) {
+            $spending = Transaction::where('user_id', $userId)
                 ->where('type', 'expense')
                 ->whereNull('transfer_id')
-                ->whereIn('category_id', $budgets->pluck('category_id'))
-                ->whereMonth('transaction_date', $now->month)
-                ->whereYear('transaction_date', $now->year)
-                ->sum('amount');
+                ->selectRaw('
+                    SUM(CASE WHEN DAYOFWEEK(transaction_date) IN (1, 7) THEN amount ELSE 0 END) as weekend_total,
+                    SUM(CASE WHEN DAYOFWEEK(transaction_date) NOT IN (1, 7) THEN amount ELSE 0 END) as weekday_total
+                ')
+                ->first();
 
-            if ($spentInBudgets >= $totalBudget) {
-                return "Your total budget has already been exceeded.";
+            if (!$spending || ($spending->weekend_total == 0 && $spending->weekday_total == 0)) {
+                return null;
             }
 
-            // Daily rate of spending on budgeted categories
-            $dailyRate = $spentInBudgets / $currentDay;
+            $total = $spending->weekend_total + $spending->weekday_total;
+            if ($total == 0) return null;
 
-            if ($dailyRate == 0) {
-                return null; // Not spending anything yet
+            $weekendPct = round(($spending->weekend_total / $total) * 100);
+            
+            if ($weekendPct > 28) {
+                return "🏖️ High weekend spend: {$weekendPct}% of total expenses.";
+            } else {
+                return "🏢 Most spending occurs on weekdays.";
             }
-
-            $daysToDeplete = floor($totalBudget / $dailyRate);
-            $daysLeft = $daysToDeplete - $currentDay;
-
-            if ($daysToDeplete < $daysInMonth) {
-                return "At this rate, your budget will run out in " . max(1, $daysLeft) . " days.";
-            }
-
-            return "Your budget is pacing perfectly and will last the entire month.";
         });
     }
 }
