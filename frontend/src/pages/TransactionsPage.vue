@@ -111,8 +111,9 @@
               <td>{{ tx.description || '-' }}</td>
               <td>
                 <div class="btn-group btn-group-sm">
-                  <button class="btn btn-outline-primary" @click="openEdit(tx)"><i class="bi bi-pencil"></i></button>
-                  <button class="btn btn-outline-danger" @click="confirmDelete(tx)"><i class="bi bi-trash"></i></button>
+                  <button class="btn btn-outline-success" @click="openDuplicate(tx)" title="Duplicate"><i class="bi bi-copy"></i></button>
+                  <button class="btn btn-outline-primary" @click="openEdit(tx)" title="Edit"><i class="bi bi-pencil"></i></button>
+                  <button class="btn btn-outline-danger" @click="confirmDelete(tx)" title="Delete"><i class="bi bi-trash"></i></button>
                 </div>
               </td>
             </tr>
@@ -439,6 +440,21 @@ function openCreate() {
 function openEdit(tx) {
   editingId.value = tx.id;
   form.value = { type: tx.type, member_id: tx.member?.id, account_id: tx.account?.id, category_id: tx.category?.id || '', amount: tx.amount, transaction_date: tx.transaction_date_raw, description: tx.description || '' };
+  formError.value = '';
+  showTxModal.value = true;
+}
+
+function openDuplicate(tx) {
+  editingId.value = null; // Forces creation instead of editing
+  form.value = { 
+    type: tx.type, 
+    member_id: tx.member?.id || '', 
+    account_id: tx.account?.id || '', 
+    category_id: tx.category?.id || '', 
+    amount: tx.amount, 
+    transaction_date: todayISO(), 
+    description: tx.description || '' 
+  };
   formError.value = '';
   showTxModal.value = true;
 }
