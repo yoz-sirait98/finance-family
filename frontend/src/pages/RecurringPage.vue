@@ -64,7 +64,7 @@
             <div class="mb-3">
               <label class="form-label">Account</label>
               <select v-model="form.account_id" class="form-select">
-                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>                
               </select>
             </div>
             <div class="mb-3">

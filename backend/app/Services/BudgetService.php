@@ -45,7 +45,7 @@ class BudgetService
                 ->paginate($perPage, ['*'], 'page', $page);
 
             if ($budgets->isEmpty()) {
-                return $budgets;
+                return collect([]);
             }
 
             // Single query to get spending for all budget categories at once

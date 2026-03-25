@@ -4,6 +4,7 @@
       <div><h4>Budgets</h4><p>Set budgets per category for this month</p></div>
       <button class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Set Budget</button>
     </div>
+    
     <div class="row g-3">
       <div v-for="b in budgets" :key="b.id || b.category_id" class="col-md-6 col-lg-4">
         <div class="stat-card">
@@ -42,26 +43,30 @@
         <form @submit.prevent="save">
           <div class="modal-body">
             <div v-if="formError" class="alert alert-danger small">{{ formError }}</div>
+            
             <div class="mb-3">
               <label class="form-label">Category</label>
-              <select v-model="form.category_id" class="form-select" required :disabled="!!editingId">
-                <option v-for="c in expenseCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
+              <select v-model="form.category_id" class="form-select" required>
+                <option value="">-- Select Category --</option>
+                <option v-for="c in expenseCategories" :key="'cat-'+c.id" :value="c.id">{{ c.name }}</option>
               </select>
             </div>
+            
             <div class="mb-3">
               <label class="form-label">Amount (Rp)</label>
               <input v-model.number="form.amount" type="number" class="form-control" min="0" required />
             </div>
+            
             <div class="row">
               <div class="col-6 mb-3">
                 <label class="form-label">Month</label>
-                <select v-model.number="form.month" class="form-select">
-                  <option v-for="m in 12" :key="m" :value="m">{{ m }}</option>
+                <select v-model="form.month" class="form-select" required>
+                  <option v-for="m in 12" :key="'m-'+m" :value="m">{{ m }}</option>
                 </select>
               </div>
               <div class="col-6 mb-3">
                 <label class="form-label">Year</label>
-                <input v-model.number="form.year" type="number" class="form-control" />
+                <input v-model.number="form.year" type="number" class="form-control" required />
               </div>
             </div>
           </div>
@@ -81,11 +86,11 @@
           <button type="button" class="btn-close" @click="showDeleteModal = false"></button>
         </div>
         <div class="modal-body">
-          <p class="mb-0">Are you sure you want to delete the budget for <strong>{{ deletingItem?.category?.name }}</strong>? This cannot be undone.</p>
+          <p class="mb-0">Are you sure you want to delete the budget? This cannot be undone.</p>
         </div>
         <div class="modal-footer border-0 pt-0">
-          <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
-          <button class="btn btn-danger" @click="doDelete">Delete</button>
+          <button type="button" class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
+          <button type="button" class="btn btn-danger" @click="doDelete">Delete</button>
         </div>
       </div>
     </div>
@@ -102,55 +107,93 @@ import { useBudgetStore } from '../stores/budgets';
 const budgets = ref([]);
 const expenseCategories = ref([]);
 const editingId = ref(null);
-const now = new Date();
-const form = ref({ category_id: '', amount: 0, month: now.getMonth() + 1, year: now.getFullYear() });
 const formError = ref('');
-
 const showModal = ref(false);
 const showDeleteModal = ref(false);
 const deletingItem = ref(null);
+
 const toast = useToastStore();
 const budgetStore = useBudgetStore();
 
+// Clean reactive blueprint generating fresh addresses to avoid GC tracking diff bugs.
+const initialFormState = () => {
+  const d = new Date();
+  return {
+    category_id: '',
+    amount: 0,
+    month: d.getMonth() + 1,
+    year: d.getFullYear()
+  };
+};
+
+const form = ref(initialFormState());
+
 async function fetchData() {
-  const { data } = await budgetService.list({ month: now.getMonth() + 1, year: now.getFullYear() });
-  budgets.value = data.data;
+  const d = new Date();
+  try {
+    const { data } = await budgetService.list({ month: d.getMonth() + 1, year: d.getFullYear() });
+    budgets.value = data.data || [];
+  } catch (error) {
+    console.error("Failed to fetch budgets", error);
+  }
 }
 
 async function fetchCategories() {
-  const { data } = await categoryService.list('expense');
-  expenseCategories.value = data.data;
+  try {
+    const { data } = await categoryService.list('expense');
+    expenseCategories.value = data.data || [];
+  } catch (error) {
+    console.error("Failed to fetch categories", error);
+  }
 }
 
 function openCreate() {
   editingId.value = null;
-  form.value = { category_id: expenseCategories.value[0]?.id || '', amount: 0, month: now.getMonth() + 1, year: now.getFullYear() };
   formError.value = '';
+  const newState = initialFormState();
+  if (expenseCategories.value.length > 0) {
+    newState.category_id = expenseCategories.value[0].id;
+  }
+  form.value = newState;
   showModal.value = true;
 }
 
 function openEdit(b) {
   editingId.value = b.id;
-  form.value = { category_id: b.category_id || b.category?.id, amount: b.amount, month: b.month, year: b.year };
   formError.value = '';
+  form.value = {
+    category_id: b.category_id || b.category?.id || '',
+    amount: Number(b.amount) || 0,
+    month: Number(b.month) || 1,
+    year: Number(b.year) || new Date().getFullYear()
+  };
   showModal.value = true;
 }
 
 async function save() {
   formError.value = '';
+  
+  // Guarantee primitive format binding to intercept standard Vue input string types.
+  const payload = {
+    category_id: form.value.category_id,
+    amount: Number(form.value.amount),
+    month: Number(form.value.month),
+    year: Number(form.value.year)
+  };
+
   try {
     if (editingId.value) {
-      await budgetService.update(editingId.value, form.value);
+      await budgetService.update(editingId.value, payload);
       toast.success('Budget updated successfully');
     } else {
-      await budgetService.create(form.value);
+      await budgetService.create(payload);
       toast.success('Budget created successfully');
     }
     showModal.value = false;
     fetchData();
-    budgetStore.fetchAlerts(); // update navbar bell instantly
+    budgetStore.fetchAlerts(); 
   } catch(e) {
-    formError.value = e.response?.data?.message || 'Error occurred';
+    formError.value = e.response?.data?.message || 'Error occurred while saving budget.';
     toast.error(formError.value);
   }
 }
@@ -168,7 +211,7 @@ async function doDelete() {
     showDeleteModal.value = false;
     deletingItem.value = null;
     fetchData();
-    budgetStore.fetchAlerts(); // update navbar bell instantly
+    budgetStore.fetchAlerts(); 
   } catch(e) {
     toast.error(e.response?.data?.message || 'Failed to delete budget');
   }
@@ -176,6 +219,6 @@ async function doDelete() {
 
 onMounted(async () => {
   await fetchCategories();
-  fetchData();
+  await fetchData();
 });
 </script>

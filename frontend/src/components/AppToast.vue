@@ -1,5 +1,5 @@
 <template>
-  <div class="toast-container position-fixed top-0 end-0 p-4" style="z-index: 9999; margin-top: 60px;">
+  <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-4" style="z-index: 9999; margin-bottom: 20px;">
     <TransitionGroup name="toast-list">
       <div 
         v-for="toast in toastStore.toasts" 
@@ -127,11 +127,11 @@ const toastStore = useToastStore();
 }
 .toast-list-enter-from {
   opacity: 0;
-  transform: translateX(50px) scale(0.9);
+  transform: translateY(50px) scale(0.9);
 }
 .toast-list-leave-to {
   opacity: 0;
-  transform: translateX(50px) scale(0.9);
+  transform: translateY(50px) scale(0.9);
   position: absolute;
 }
 </style>

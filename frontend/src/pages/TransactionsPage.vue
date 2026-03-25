@@ -49,7 +49,9 @@
           <div class="col-md-2">
             <select v-model="filters.account_id" class="form-select form-select-sm" @change="fetchData">
               <option value="">All Accounts</option>
-              <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+              <optgroup v-for="(group, type) in groupedAccounts" :key="type" :label="type">
+                <option v-for="a in group" :key="a.id" :value="a.id">{{ a.name }}</option>
+              </optgroup>
             </select>
           </div>
           <div class="col-md-2">
@@ -163,7 +165,9 @@
             <div class="mb-3">
               <label class="form-label">Account</label>
               <select v-model="form.account_id" class="form-select" required>
-                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                <optgroup v-for="(group, type) in groupedAccounts" :key="type" :label="type">
+                  <option v-for="a in group" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </optgroup>
               </select>
             </div>
             <div class="mb-3">
@@ -216,13 +220,17 @@
             <div class="mb-3">
               <label class="form-label">From Account</label>
               <select v-model="transferForm.from_account_id" class="form-select" required>
-                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }} ({{ a.balance_formatted }})</option>
+                <optgroup v-for="(group, type) in groupedAccounts" :key="type" :label="type">
+                  <option v-for="a in group" :key="a.id" :value="a.id">{{ a.name }} ({{ a.balance_formatted }})</option>
+                </optgroup>
               </select>
             </div>
             <div class="mb-3">
               <label class="form-label">To Account</label>
               <select v-model="transferForm.to_account_id" class="form-select" required>
-                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                <optgroup v-for="(group, type) in groupedAccounts" :key="type" :label="type">
+                  <option v-for="a in group" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </optgroup>
               </select>
             </div>
             <div class="mb-3">
@@ -267,12 +275,13 @@
     </div>
 
     <!-- ===== Budget Over-Budget Confirmation Modal ===== -->
-    <div v-if="showBudgetConfirm" class="vue-modal-backdrop">
+    <div v-if="showBudgetConfirm" class="vue-modal-backdrop" @mousedown.self="showBudgetConfirm = false">
       <div class="vue-modal" style="max-width:460px">
         <div class="modal-header border-0 pb-0">
           <h5 class="modal-title text-warning">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>Budget Warning
           </h5>
+          <button type="button" class="btn-close" @click="showBudgetConfirm = false"></button>
         </div>
         <div class="modal-body">
           <p class="mb-3">
@@ -357,6 +366,19 @@ const filters = ref({
 
 const form = ref({ type: 'expense', member_id: '', account_id: '', category_id: '', amount: '', transaction_date: todayISO(), description: '' });
 const transferForm = ref({ member_id: '', from_account_id: '', to_account_id: '', amount: '', transaction_date: todayISO(), description: '' });
+
+const groupedAccounts = computed(() => {
+  const groups = {};
+  accounts.value.forEach(a => {
+    const t = a.type || 'other';
+    let typeLabel = t;
+    if (t === 'ewallet') typeLabel = 'e-Wallet';
+    else typeLabel = t.charAt(0).toUpperCase() + t.slice(1);
+    if (!groups[typeLabel]) groups[typeLabel] = [];
+    groups[typeLabel].push(a);
+  });
+  return groups;
+});
 
 const filteredCategories = computed(() => {
   if (!form.value.type) return categories.value;
