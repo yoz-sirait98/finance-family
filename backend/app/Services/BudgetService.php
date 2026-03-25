@@ -16,7 +16,7 @@ class BudgetService
         return 'budget_' . $userId . '_' . ($month ?? 0) . '_' . ($year ?? 0) . '_' . $page . '_' . $perPage;
     }
 
-    private function clearCache(int $userId): void
+    public function clearUserCache(int $userId): void
     {
         foreach (range(1, 100) as $page) {
             for ($month = 1; $month <= 12; $month++) {
@@ -117,7 +117,7 @@ class BudgetService
                 );
             }
 
-            $this->clearCache($userId);
+            $this->clearUserCache($userId);
             return $budget->load('category');
         });
     }
@@ -136,7 +136,7 @@ class BudgetService
                 $budget->toArray()
             );
 
-            $this->clearCache($budget->user_id);
+            $this->clearUserCache($budget->user_id);
             return $budget->load('category');
         });
     }
@@ -156,7 +156,7 @@ class BudgetService
                 $deletedData
             );
 
-            $this->clearCache($userId);
+            $this->clearUserCache($userId);
         });
     }
 }

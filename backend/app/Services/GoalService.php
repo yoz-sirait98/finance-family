@@ -16,7 +16,7 @@ class GoalService
         return 'goal_' . $userId . '_' . $page . '_' . $perPage;
     }
 
-    private function clearCache(int $userId): void
+    public function clearUserCache(int $userId): void
     {
         foreach (range(1, 100) as $page) {
             Cache::forget($this->cacheKey($userId, $page));
@@ -54,7 +54,7 @@ class GoalService
                 $goal->toArray()
             );
 
-            $this->clearCache($userId);
+            $this->clearUserCache($userId);
             return $goal;
         });
     }
@@ -73,7 +73,7 @@ class GoalService
                 $goal->toArray()
             );
 
-            $this->clearCache($goal->user_id);
+            $this->clearUserCache($goal->user_id);
             return $goal;
         });
     }
@@ -93,7 +93,7 @@ class GoalService
                 $deletedData
             );
 
-            $this->clearCache($userId);
+            $this->clearUserCache($userId);
         });
     }
 
@@ -114,6 +114,7 @@ class GoalService
                 $goal->update(['status' => 'completed']);
             }
 
+            $this->clearUserCache($goal->user_id);
             return $goalTransaction;
         });
     }
