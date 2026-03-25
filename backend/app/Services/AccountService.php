@@ -15,14 +15,15 @@ class AccountService
         return 'account_list_' . $userId;
     }
 
-    private function clearCache(int $userId): void
+    public function clearUserCache(int $userId): void
     {
         Cache::forget($this->cacheKey($userId));
     }
 
     public function __construct(
         private AccountBalanceService $accountBalanceService,
-        private ActivityLogService $activityLogService
+        private ActivityLogService $activityLogService,
+        private DashboardService $dashboardService
     ) {}
 
     public function list(int $userId)
@@ -53,7 +54,8 @@ class AccountService
                 $account->toArray()
             );
 
-            $this->clearCache($userId);
+            $this->clearUserCache($userId);
+            $this->dashboardService->clearUserCache($userId);
             return $account;
         });
     }
@@ -77,7 +79,8 @@ class AccountService
                 $account->toArray()
             );
 
-            $this->clearCache($account->user_id);
+            $this->clearUserCache($account->user_id);
+            $this->dashboardService->clearUserCache($account->user_id);
             return $account;
         });
     }
@@ -97,7 +100,8 @@ class AccountService
                 $deletedData
             );
 
-            $this->clearCache($userId);
+            $this->clearUserCache($userId);
+            $this->dashboardService->clearUserCache($userId);
         });
     }
 }

@@ -34,6 +34,8 @@ class DashboardService
         Cache::forget("user_{$userId}_insight_monthly_comp");
         Cache::forget("user_{$userId}_insight_top_category");
         Cache::forget("user_{$userId}_insight_budget_risk");
+        Cache::forget("networth_current_{$userId}");
+        Cache::forget("networth_history_{$userId}");
     }
 
     public function getSummary(int $userId, ?int $month = null, ?int $year = null): array
