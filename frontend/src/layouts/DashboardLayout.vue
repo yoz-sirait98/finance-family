@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useBudgetStore } from '../stores/budgets';
@@ -163,6 +163,9 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const budgetStore = useBudgetStore();
+
+const POLL_INTERVAL_MS = 120000; // 2 minutes
+const routeNamesToPollAlerts = ['Dashboard', 'Budgets', 'Transactions', 'Recurring'];
 
 const sidebarCollapsed = ref(false);
 const mobileOpen = ref(false);
@@ -220,15 +223,36 @@ async function handleLogout() {
   router.push('/login');
 }
 
+function startAlertsPolling() {
+  clearInterval(pollTimer);
+
+  if (routeNamesToPollAlerts.includes(route.name)) {
+    pollTimer = setInterval(refreshAlerts, POLL_INTERVAL_MS);
+  }
+}
+
+function stopAlertsPolling() {
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+watch(() => route.name, async (newRoute) => {
+  if (routeNamesToPollAlerts.includes(newRoute)) {
+    await refreshAlerts();
+    startAlertsPolling();
+  } else {
+    stopAlertsPolling();
+  }
+});
+
 onMounted(async () => {
   document.addEventListener('mousedown', handleOutsideClick);
   await refreshAlerts();
-  // Poll every 30 seconds for real-time updates
-  pollTimer = setInterval(refreshAlerts, 30000);
+  startAlertsPolling();
 });
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleOutsideClick);
-  clearInterval(pollTimer);
+  stopAlertsPolling();
 });
 </script>
