@@ -1,11 +1,11 @@
 <template>
   <div class="budgets-page fade-in">
-    <div class="page-header d-flex justify-content-between align-items-center">
+    <div id="tour-budgets-header" class="page-header d-flex justify-content-between align-items-center">
       <div><h4>Budgets</h4><p>Set budgets per category for this month</p></div>
-      <button class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Set Budget</button>
+      <button id="tour-budgets-add-btn" class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Set Budget</button>
     </div>
     
-    <div class="row g-3">
+    <div id="tour-budgets-list" class="row g-3">
       <div v-for="b in budgets" :key="b.id || b.category_id" class="col-md-6 col-lg-4">
         <div class="stat-card">
           <div class="d-flex justify-content-between align-items-center mb-2">
@@ -98,7 +98,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useTour } from '../composables/useTour';
+import { budgetsTourSteps } from '../tours/budgetsTour';
 import { budgetService } from '../services/budgetService';
 import { categoryService } from '../services/categoryService';
 import { useToastStore } from '../stores/toast';
@@ -217,8 +219,16 @@ async function doDelete() {
   }
 }
 
+const { startTour, startAutoTour } = useTour('budgets');
+
 onMounted(async () => {
   await fetchCategories();
   await fetchData();
+  startAutoTour(budgetsTourSteps);
+  window.addEventListener('start-budgets-tour', () => startTour(budgetsTourSteps));
+});
+
+onUnmounted(() => {
+  window.removeEventListener('start-budgets-tour', () => startTour(budgetsTourSteps));
 });
 </script>

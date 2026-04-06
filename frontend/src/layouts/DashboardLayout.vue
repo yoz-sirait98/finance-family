@@ -94,9 +94,20 @@
 
       <div class="d-flex align-items-center gap-3">
 
+        <!-- Tour Help Button -->
+        <button
+          id="tour-help-btn"
+          class="toggle-btn tour-help-btn"
+          @click="triggerTour"
+          title="Start guided tour"
+          v-tooltip="'Replay tour'"
+        >
+          <i class="bi bi-compass"></i>
+        </button>
+
         <!-- Budget Alerts Bell -->
         <div class="vue-dropdown" ref="bellDropdownRef">
-          <button class="toggle-btn position-relative" @click.stop="toggleBell">
+          <button id="tour-bell-icon" class="toggle-btn position-relative" @click.stop="toggleBell">
             <i class="bi bi-bell"></i>
             <span
               v-if="budgetAlerts.length"
@@ -158,11 +169,33 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useBudgetStore } from '../stores/budgets';
+import { useTourStore } from '../stores/tour';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const budgetStore = useBudgetStore();
+const tourStore = useTourStore();
+
+// Map route names to the eventBus key used by each page
+const PAGE_TOUR_EVENTS = {
+  Dashboard: 'start-dashboard-tour',
+  Transactions: 'start-transactions-tour',
+  Budgets: 'start-budgets-tour',
+  Goals: 'start-goals-tour',
+  Accounts: 'start-accounts-tour',
+  Reports: 'start-reports-tour',
+  Recurring: 'start-recurring-tour',
+};
+
+function triggerTour() {
+  const eventName = PAGE_TOUR_EVENTS[route.name];
+  if (eventName) {
+    // Reset seen so the tour will re-run
+    tourStore.resetPage(route.name?.toLowerCase());
+    window.dispatchEvent(new CustomEvent(eventName));
+  }
+}
 
 const POLL_INTERVAL_MS = 120000; // 2 minutes
 const routeNamesToPollAlerts = ['Dashboard', 'Budgets', 'Transactions', 'Recurring'];

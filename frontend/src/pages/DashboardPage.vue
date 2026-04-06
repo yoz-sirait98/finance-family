@@ -2,7 +2,7 @@
   <div class="dashboard-page fade-in">
 
     <!-- Filter Bar -->
-    <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+    <div id="tour-period-filter" class="d-flex align-items-center gap-2 mb-4 flex-wrap">
       <label class="fw-semibold text-muted small me-1">Period:</label>
       <select v-model.number="selectedMonth" class="form-select form-select-sm" style="width:auto" @change="loadAll">
         <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
@@ -14,7 +14,7 @@
     </div>
 
     <!-- AI Financial Insights -->
-    <div v-if="insights.length" class="mb-4">
+    <div v-if="insights.length" id="tour-insights" class="mb-4">
       <div class="d-flex align-items-center mb-2" style="cursor: pointer; user-select: none; width: fit-content;" @click="showInsights = !showInsights">
         <h6 class="fw-bold mb-0"><i class="bi bi-stars text-warning me-2"></i>Financial Insight</h6>
         <i class="bi ms-2 text-muted" :class="showInsights ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
@@ -36,7 +36,7 @@
     <!-- Summary Cards -->
     <div class="row g-3 mb-4">
       <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
+        <div id="tour-stat-balance" class="stat-card">
           <div class="d-flex align-items-center justify-content-between">
             <div>
               <div class="stat-label">Total Balance</div>
@@ -49,7 +49,7 @@
         </div>
       </div>
       <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
+        <div id="tour-stat-income" class="stat-card">
           <div class="d-flex align-items-center justify-content-between">
             <div>
               <div class="stat-label">Income — {{ currentMonthLabel }}</div>
@@ -62,7 +62,7 @@
         </div>
       </div>
       <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
+        <div id="tour-stat-expense" class="stat-card">
           <div class="d-flex align-items-center justify-content-between">
             <div>
               <div class="stat-label">Expense — {{ currentMonthLabel }}</div>
@@ -75,7 +75,7 @@
         </div>
       </div>
       <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
+        <div id="tour-stat-net" class="stat-card">
           <div class="d-flex align-items-center justify-content-between">
             <div>
               <div class="stat-label">Net — {{ currentMonthLabel }}</div>
@@ -92,7 +92,7 @@
     </div>
 
     <!-- Charts Row -->
-    <div class="row g-3 mb-4">
+    <div id="tour-charts" class="row g-3 mb-4">
       <div class="col-lg-4">
         <div class="chart-card h-100">
           <h6><i class="bi bi-pie-chart me-2"></i>Expense by Category</h6>
@@ -145,12 +145,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { dashboardService } from '../services/dashboardService';
 import { insightService } from '../services/insightService';
 import { netWorthService } from '../services/netWorthService';
 import { formatRupiah } from '../utils/currency';
+import { useTour } from '../composables/useTour';
+import { dashboardTourSteps } from '../tours/dashboardTour';
 
 const now = new Date();
 const showInsights = ref(false);
@@ -274,5 +276,15 @@ async function loadAll() {
   }
 }
 
-onMounted(loadAll);
+const { startTour, startAutoTour } = useTour('dashboard');
+
+onMounted(() => {
+  loadAll();
+  startAutoTour(dashboardTourSteps);
+  window.addEventListener('start-dashboard-tour', () => startTour(dashboardTourSteps));
+});
+
+onUnmounted(() => {
+  window.removeEventListener('start-dashboard-tour', () => startTour(dashboardTourSteps));
+});
 </script>

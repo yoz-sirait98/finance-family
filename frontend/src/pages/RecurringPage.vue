@@ -1,10 +1,10 @@
 <template>
   <div class="recurring-page fade-in">
-    <div class="page-header d-flex justify-content-between align-items-center">
+    <div id="tour-recurring-header" class="page-header d-flex justify-content-between align-items-center">
       <div><h4>Recurring Transactions</h4><p>Manage automatic repeating transactions</p></div>
-      <button class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Add Recurring</button>
+      <button id="tour-recurring-add-btn" class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Add Recurring</button>
     </div>
-    <div class="table-card">
+    <div id="tour-recurring-list" class="table-card">
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead><tr><th>Description</th><th>Type</th><th>Amount</th><th>Frequency</th><th>Next Due</th><th>Status</th><th>Actions</th></tr></thead>
@@ -132,7 +132,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useTour } from '../composables/useTour';
+import { recurringTourSteps } from '../tours/recurringTour';
 import api from '../services/api';
 import { memberService } from '../services/memberService';
 import { accountService } from '../services/accountService';
@@ -220,6 +222,8 @@ async function doDelete() {
   }
 }
 
+const { startTour, startAutoTour } = useTour('recurring');
+
 onMounted(async () => {
   const fetchPromise = fetchData();
 
@@ -234,5 +238,11 @@ onMounted(async () => {
   categories.value = catRes.data.data;
 
   await fetchPromise;
+  startAutoTour(recurringTourSteps);
+  window.addEventListener('start-recurring-tour', () => startTour(recurringTourSteps));
+});
+
+onUnmounted(() => {
+  window.removeEventListener('start-recurring-tour', () => startTour(recurringTourSteps));
 });
 </script>

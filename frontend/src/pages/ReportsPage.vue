@@ -1,12 +1,12 @@
 <template>
   <div class="reports-page fade-in">
-    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div id="tour-reports-header" class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h4>Reports</h4>
         <p>Financial reports and analytics</p>
       </div>
       <!-- Export Buttons -->
-      <div class="d-flex gap-2">
+      <div id="tour-reports-export" class="d-flex gap-2">
         <button class="btn btn-outline-success btn-sm" @click="exportCSV" :disabled="exporting">
           <i class="bi bi-filetype-csv me-1"></i>Export CSV
         </button>
@@ -18,7 +18,7 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+    <div id="tour-reports-filters" class="d-flex align-items-center gap-2 mb-4 flex-wrap">
       <label class="fw-semibold text-muted small me-1">Filter:</label>
 
       <select v-model.number="selectedYear" class="form-select form-select-sm" style="width:auto" @change="loadCharts">
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Pie Charts Row -->
-    <div class="row g-3 mb-4">
+    <div id="tour-reports-charts" class="row g-3 mb-4">
       <div class="col-lg-6">
         <div class="chart-card h-100">
           <h6><i class="bi bi-pie-chart me-2"></i>Expense by Category</h6>
@@ -93,7 +93,9 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { useTour } from '../composables/useTour';
+import { reportsTourSteps } from '../tours/reportsTour';
 import Chart from 'chart.js/auto';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -430,9 +432,17 @@ async function exportPDF() {
   }
 }
 
+const { startTour, startAutoTour } = useTour('reports');
+
 onMounted(async () => {
   const { data } = await memberService.list().catch(() => ({ data: { data: [] } }));
   members.value = data.data;
   await loadCharts();
+  startAutoTour(reportsTourSteps);
+  window.addEventListener('start-reports-tour', () => startTour(reportsTourSteps));
+});
+
+onUnmounted(() => {
+  window.removeEventListener('start-reports-tour', () => startTour(reportsTourSteps));
 });
 </script>

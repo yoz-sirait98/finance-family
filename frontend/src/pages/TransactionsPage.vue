@@ -1,22 +1,22 @@
 <template>
   <div class="transactions-page fade-in">
-    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div id="tour-tx-header" class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <h4>Transactions</h4>
         <p>Manage your family transactions</p>
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary" @click="openTransfer">
+        <button id="tour-tx-transfer-btn" class="btn btn-outline-primary" @click="openTransfer">
           <i class="bi bi-arrow-left-right me-1"></i>Transfer
         </button>
-        <button class="btn btn-primary-gradient" @click="openCreate">
+        <button id="tour-tx-add-btn" class="btn btn-primary-gradient" @click="openCreate">
           <i class="bi bi-plus-lg me-1"></i>Add Transaction
         </button>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="table-card mb-3">
+    <div id="tour-tx-filters" class="table-card mb-3">
       <div class="card-header">
         <div class="row g-2 align-items-end">
           <div class="col-md-3">
@@ -74,7 +74,7 @@
         </div>
       </div>
 
-      <div class="table-responsive">
+      <div id="tour-tx-table" class="table-responsive">
         <table class="table table-hover mb-0">
           <thead>
             <tr>
@@ -321,7 +321,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useTour } from '../composables/useTour';
+import { transactionsTourSteps } from '../tours/transactionsTour';
 import { transactionService } from '../services/transactionService';
 import { memberService } from '../services/memberService';
 import { accountService } from '../services/accountService';
@@ -567,6 +569,8 @@ async function saveTransfer() {
   }
 }
 
+const { startTour, startAutoTour } = useTour('transactions');
+
 onMounted(async () => {
   const [, memRes, accRes, catRes] = await Promise.all([
     fetchData(),
@@ -577,5 +581,11 @@ onMounted(async () => {
   members.value = memRes.data.data;
   accounts.value = accRes.data.data;
   categories.value = catRes.data.data;
+  startAutoTour(transactionsTourSteps);
+  window.addEventListener('start-transactions-tour', () => startTour(transactionsTourSteps));
+});
+
+onUnmounted(() => {
+  window.removeEventListener('start-transactions-tour', () => startTour(transactionsTourSteps));
 });
 </script>

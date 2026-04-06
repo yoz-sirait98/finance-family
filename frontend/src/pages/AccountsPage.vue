@@ -1,10 +1,10 @@
 <template>
   <div class="accounts-page fade-in">
-    <div class="page-header d-flex justify-content-between align-items-center">
+    <div id="tour-accounts-header" class="page-header d-flex justify-content-between align-items-center">
       <div><h4>Accounts</h4><p>Manage bank, cash, and e-wallet accounts</p></div>
-      <button class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Add Account</button>
+      <button id="tour-accounts-add-btn" class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Add Account</button>
     </div>
-    <div class="row g-3">
+    <div id="tour-accounts-list" class="row g-3">
       <div v-for="acc in accounts" :key="acc.id" class="col-md-4 col-lg-3">
         <div class="stat-card">
           <div class="d-flex align-items-center gap-2 mb-2">
@@ -86,7 +86,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useTour } from '../composables/useTour';
+import { accountsTourSteps } from '../tours/accountsTour';
 import { accountService } from '../services/accountService';
 import { useToastStore } from '../stores/toast';
 
@@ -155,5 +157,15 @@ async function doDelete() {
   }
 }
 
-onMounted(fetchData);
+const { startTour, startAutoTour } = useTour('accounts');
+
+onMounted(async () => {
+  await fetchData();
+  startAutoTour(accountsTourSteps);
+  window.addEventListener('start-accounts-tour', () => startTour(accountsTourSteps));
+});
+
+onUnmounted(() => {
+  window.removeEventListener('start-accounts-tour', () => startTour(accountsTourSteps));
+});
 </script>

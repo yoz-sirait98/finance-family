@@ -1,10 +1,10 @@
 <template>
   <div class="goals-page fade-in">
-    <div class="page-header d-flex justify-content-between align-items-center">
+    <div id="tour-goals-header" class="page-header d-flex justify-content-between align-items-center">
       <div><h4>Saving Goals</h4><p>Track your saving targets</p></div>
-      <button class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Add Goal</button>
+      <button id="tour-goals-add-btn" class="btn btn-primary-gradient" @click="openCreate"><i class="bi bi-plus-lg me-1"></i>Add Goal</button>
     </div>
-    <div class="row g-3">
+    <div id="tour-goals-list" class="row g-3">
       <div v-for="g in goals" :key="g.id" class="col-md-6 col-lg-4">
         <div class="stat-card">
           <div class="d-flex justify-content-between align-items-start mb-2">
@@ -121,7 +121,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useTour } from '../composables/useTour';
+import { goalsTourSteps } from '../tours/goalsTour';
 import { goalService } from '../services/goalService';
 import { accountService } from '../services/accountService';
 import { useToastStore } from '../stores/toast';
@@ -213,6 +215,8 @@ async function doDelete() {
   }
 }
 
+const { startTour, startAutoTour } = useTour('goals');
+
 onMounted(async () => {
   const [goalsRes, accRes] = await Promise.all([
     goalService.list().catch(() => ({ data: { data: [] } })),
@@ -220,5 +224,11 @@ onMounted(async () => {
   ]);
   goals.value = goalsRes.data.data;
   accounts.value = accRes.data.data;
+  startAutoTour(goalsTourSteps);
+  window.addEventListener('start-goals-tour', () => startTour(goalsTourSteps));
+});
+
+onUnmounted(() => {
+  window.removeEventListener('start-goals-tour', () => startTour(goalsTourSteps));
 });
 </script>
