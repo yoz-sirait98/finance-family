@@ -80,16 +80,19 @@ class DashboardService
 
     public function getExpenseByCategory(int $userId, ?int $month = null, ?int $year = null, ?int $memberId = null): array
     {
-        $month = $month ?? now()->month;
+        if ($month === null) $month = now()->month;
         $year  = $year  ?? now()->year;
 
         return Cache::remember($this->cacheKey('pie', $userId, $month, $year, (int) $memberId), self::TTL, function () use ($userId, $month, $year, $memberId) {
             $query = Transaction::where('user_id', $userId)
                 ->where('type', 'expense')
                 ->where('transfer_id', null)
-                ->whereMonth('transaction_date', $month)
                 ->whereYear('transaction_date', $year)
                 ->whereNotNull('category_id');
+
+            if ($month > 0) {
+                $query->whereMonth('transaction_date', $month);
+            }
 
             if ($memberId) {
                 $query->where('member_id', $memberId);
@@ -111,16 +114,19 @@ class DashboardService
 
     public function getExpenseByMember(int $userId, ?int $month = null, ?int $year = null, ?int $memberId = null): array
     {
-        $month = $month ?? now()->month;
+        if ($month === null) $month = now()->month;
         $year  = $year  ?? now()->year;
 
         return Cache::remember($this->cacheKey('member', $userId, $month, $year, (int) $memberId), self::TTL, function () use ($userId, $month, $year, $memberId) {
             $query = Transaction::where('user_id', $userId)
                 ->where('type', 'expense')
                 ->where('transfer_id', null)
-                ->whereMonth('transaction_date', $month)
                 ->whereYear('transaction_date', $year)
                 ->whereNotNull('member_id');
+
+            if ($month > 0) {
+                $query->whereMonth('transaction_date', $month);
+            }
 
             if ($memberId) {
                 $query->where('member_id', $memberId);

@@ -32,6 +32,12 @@ class NetWorthService
 
     public function getHistory(int $userId): array
     {
+        // Auto-seed current month snapshot if user has no history yet
+        if (!NetWorthHistory::where('user_id', $userId)->exists()) {
+            $this->storeMonthlySnapshot();
+            Cache::forget($this->cacheKey($userId, 'history'));
+        }
+
         return Cache::remember($this->cacheKey($userId, 'history'), self::TTL, function () use ($userId) {
             return NetWorthHistory::where('user_id', $userId)
                 ->orderBy('recorded_at', 'asc')

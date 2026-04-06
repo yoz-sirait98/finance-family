@@ -101,13 +101,13 @@ class DashboardController extends Controller
             'data' => [
                 'expense_by_category' => $this->dashboardService->getExpenseByCategory(
                     $userId,
-                    $month ?: null,
+                    $month,
                     $year,
                     $memberId
                 ),
                 'expense_by_member' => $this->dashboardService->getExpenseByMember(
                     $userId,
-                    $month ?: null,
+                    $month,
                     $year,
                     $memberId
                 ),

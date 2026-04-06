@@ -102,21 +102,26 @@ import autoTable from 'jspdf-autotable';
 import { dashboardService } from '../services/dashboardService';
 import { memberService } from '../services/memberService';
 
+// ─── Canvas Refs ──────────────────────────────────────────────────────────────
 const pieChart    = ref(null);
 const memberChart = ref(null);
 const barChart    = ref(null);
 const lineChart   = ref(null);
 
+// ─── Data Flags ───────────────────────────────────────────────────────────────
 const hasPieData    = ref(false);
 const hasMemberData = ref(false);
 const hasBarData    = ref(false);
 const hasLineData   = ref(false);
 
+// ─── State ────────────────────────────────────────────────────────────────────
 const exporting = ref(false);
+const chartData = ref({ pie: [], member: [], bar: [], line: [] });
+const members   = ref([]);
 
 const now = new Date();
 const selectedYear   = ref(now.getFullYear());
-const selectedMonth  = ref(0);
+const selectedMonth  = ref(now.getMonth() + 1);
 const selectedMember = ref(0);
 
 const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
@@ -128,11 +133,8 @@ const months = [
   { value: 9,  label: 'September' },{ value: 10, label: 'October' },
   { value: 11, label: 'November' }, { value: 12, label: 'December' },
 ];
-const members = ref([]);
 
-// Store latest chart data for export
-const chartData = ref({ pie: [], member: [], bar: [], line: [] });
-
+// ─── Chart Instances ──────────────────────────────────────────────────────────
 let pieInstance, memberInstance, barInstance, lineInstance;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -155,6 +157,13 @@ function filename(ext) {
 
 // ─── Load Charts ──────────────────────────────────────────────────────────────
 async function loadCharts() {
+  // 1. Destroy existing instances upfront (same pattern as Dashboard)
+  if (pieInstance)    { pieInstance.destroy();    pieInstance    = null; }
+  if (memberInstance) { memberInstance.destroy(); memberInstance = null; }
+  if (barInstance)    { barInstance.destroy();    barInstance    = null; }
+  if (lineInstance)   { lineInstance.destroy();   lineInstance   = null; }
+
+  // 2. Fetch data
   const params = {
     year:      selectedYear.value,
     month:     selectedMonth.value  || undefined,
@@ -165,62 +174,89 @@ async function loadCharts() {
     const res = await dashboardService.reports(params);
     const { expense_by_category: pieData, expense_by_member: memberData, income_vs_expense: barData, expense_trend: lineData } = res.data.data;
 
-    // Store for export use
-    chartData.value = { pie: pieData ?? [], member: memberData ?? [], bar: barData ?? [], line: lineData ?? [] };
+    chartData.value = {
+      pie:    pieData    ?? [],
+      member: memberData ?? [],
+      bar:    barData    ?? [],
+      line:   lineData   ?? [],
+    };
 
-    hasPieData.value    = pieData && pieData.length > 0;
-    hasMemberData.value = memberData && memberData.length > 0;
-    hasBarData.value    = barData && barData.some(d => d.income > 0 || d.expense > 0);
-    hasLineData.value   = lineData && lineData.some(d => d.expense > 0);
+    hasPieData.value    = chartData.value.pie.length > 0;
+    hasMemberData.value = chartData.value.member.length > 0;
+    hasBarData.value    = chartData.value.bar.some(d => d.income > 0 || d.expense > 0);
+    hasLineData.value   = chartData.value.line.some(d => d.expense > 0);
   } catch (err) {
     console.error('Failed to load reports:', err);
     chartData.value = { pie: [], member: [], bar: [], line: [] };
     hasPieData.value = hasMemberData.value = hasBarData.value = hasLineData.value = false;
   }
 
+  // 3. Wait for v-if to render canvas elements into the DOM
   await nextTick();
 
+  // 4. Create chart instances (no explicit animation block = Chart.js default animations play)
   if (hasPieData.value && pieChart.value) {
-    if (pieInstance) { pieInstance.destroy(); }
     pieInstance = new Chart(pieChart.value, {
       type: 'pie',
-      data: { labels: chartData.value.pie.map(d => d.category), datasets: [{ data: chartData.value.pie.map(d => d.total), backgroundColor: chartData.value.pie.map(d => d.color), borderWidth: 0 }] },
-      options: { 
-        responsive: true, maintainAspectRatio: false, 
-        animation: { animateScale: true, animateRotate: true }, 
-        plugins: { legend: { position: 'bottom', labels: { padding: 16 } } } 
+      data: {
+        labels: chartData.value.pie.map(d => d.category),
+        datasets: [{ data: chartData.value.pie.map(d => d.total), backgroundColor: chartData.value.pie.map(d => d.color), borderWidth: 0 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { padding: 16 } } },
       },
     });
   }
-  
+
   if (hasMemberData.value && memberChart.value) {
-    if (memberInstance) { memberInstance.destroy(); }
     memberInstance = new Chart(memberChart.value, {
       type: 'doughnut',
-      data: { labels: chartData.value.member.map(d => d.member), datasets: [{ data: chartData.value.member.map(d => d.total), backgroundColor: chartData.value.member.map(d => d.color), borderWidth: 0 }] },
-      options: { 
-        responsive: true, maintainAspectRatio: false, 
-        animation: { animateScale: true, animateRotate: true }, 
-        plugins: { legend: { position: 'bottom', labels: { padding: 16 } } } 
+      data: {
+        labels: chartData.value.member.map(d => d.member),
+        datasets: [{ data: chartData.value.member.map(d => d.total), backgroundColor: chartData.value.member.map(d => d.color), borderWidth: 0 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { padding: 16 } } },
       },
     });
   }
-  
+
   if (hasBarData.value && barChart.value) {
-    if (barInstance) { barInstance.destroy(); }
     barInstance = new Chart(barChart.value, {
       type: 'bar',
-      data: { labels: chartData.value.bar.map(d => d.month), datasets: [{ label: 'Income', data: chartData.value.bar.map(d => d.income), backgroundColor: '#28a745', borderRadius: 4 }, { label: 'Expense', data: chartData.value.bar.map(d => d.expense), backgroundColor: '#dc3545', borderRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } },
+      data: {
+        labels: chartData.value.bar.map(d => d.month),
+        datasets: [
+          { label: 'Income',  data: chartData.value.bar.map(d => d.income),  backgroundColor: '#28a745', borderRadius: 4 },
+          { label: 'Expense', data: chartData.value.bar.map(d => d.expense), backgroundColor: '#dc3545', borderRadius: 4 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } },
+      },
     });
   }
-  
+
   if (hasLineData.value && lineChart.value) {
-    if (lineInstance) { lineInstance.destroy(); }
     lineInstance = new Chart(lineChart.value, {
       type: 'line',
-      data: { labels: chartData.value.line.map(d => d.month), datasets: [{ label: 'Expense', data: chartData.value.line.map(d => d.expense), borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.1)', fill: true, tension: 0.4 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+      data: {
+        labels: chartData.value.line.map(d => d.month),
+        datasets: [{ label: 'Expense', data: chartData.value.line.map(d => d.expense), borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.1)', fill: true, tension: 0.4 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } },
+      },
     });
   }
 }
@@ -230,32 +266,28 @@ async function exportCSV() {
   const lines = [];
   const sep = ',';
 
-  lines.push(`Family Finance Report`);
+  lines.push('Family Finance Report');
   lines.push(filterLabel());
   lines.push('');
 
-  // Expense by Category
   lines.push('=== Expense by Category ===');
   lines.push(['Category', 'Amount'].join(sep));
   chartData.value.pie.forEach(r => lines.push([`"${r.category}"`, r.total].join(sep)));
   if (!chartData.value.pie.length) lines.push('No data');
   lines.push('');
 
-  // Expense by Member
   lines.push('=== Expense by Member ===');
   lines.push(['Member', 'Amount'].join(sep));
   chartData.value.member.forEach(r => lines.push([`"${r.member}"`, r.total].join(sep)));
   if (!chartData.value.member.length) lines.push('No data');
   lines.push('');
 
-  // Income vs Expense
   lines.push(`=== Income vs Expense (${selectedYear.value}) ===`);
   lines.push(['Month', 'Income', 'Expense', 'Net'].join(sep));
   chartData.value.bar.forEach(r => lines.push([r.month, r.income, r.expense, r.income - r.expense].join(sep)));
   if (!chartData.value.bar.length) lines.push('No data');
   lines.push('');
 
-  // Expense Trend
   lines.push('=== Expense Trend (Last 6 Months) ===');
   lines.push(['Month', 'Expense'].join(sep));
   chartData.value.line.forEach(r => lines.push([`"${r.month}"`, r.expense].join(sep)));
@@ -265,7 +297,6 @@ async function exportCSV() {
   const name = filename('csv');
 
   try {
-    // 1. Modern Native File System API (Immune to IDM/Extensions)
     if (window.showSaveFilePicker) {
       const handle = await window.showSaveFilePicker({
         suggestedName: name,
@@ -277,11 +308,10 @@ async function exportCSV() {
       return;
     }
   } catch (err) {
-    if (err.name === 'AbortError') return; // User cancelled dialog
+    if (err.name === 'AbortError') return;
     console.error('File Picker API failed, falling back...', err);
   }
 
-  // 2. Fallback: Base64 Data URI (also immune to IDM blob UUID bug)
   const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content);
   const a = document.createElement('a');
   a.setAttribute('href', encodedUri);
@@ -299,7 +329,6 @@ async function exportPDF() {
     const pageW = doc.internal.pageSize.getWidth();
     let y = 15;
 
-    // Header
     doc.setFontSize(18);
     doc.setTextColor(40, 40, 40);
     doc.text('Family Finance Report', pageW / 2, y, { align: 'center' });
@@ -312,17 +341,12 @@ async function exportPDF() {
     doc.text('Generated: ' + new Date().toLocaleString('id-ID'), pageW / 2, y, { align: 'center' });
     y += 8;
 
-    // -- Expense by Category --
-    doc.setFontSize(12);
-    doc.setTextColor(40);
-    doc.text('Expense by Category', 14, y);
-    y += 2;
+    doc.setFontSize(12); doc.setTextColor(40);
+    doc.text('Expense by Category', 14, y); y += 2;
     autoTable(doc, {
       startY: y,
       head: [['Category', 'Amount']],
-      body: chartData.value.pie.length
-        ? chartData.value.pie.map(r => [r.category, fmt(r.total)])
-        : [['No data', '']],
+      body: chartData.value.pie.length ? chartData.value.pie.map(r => [r.category, fmt(r.total)]) : [['No data', '']],
       styles: { fontSize: 10 },
       headStyles: { fillColor: [220, 53, 69] },
       columnStyles: { 1: { halign: 'right' } },
@@ -330,17 +354,12 @@ async function exportPDF() {
     });
     y = (doc.lastAutoTable?.finalY ?? y) + 8;
 
-    // -- Expense by Member --
-    doc.setFontSize(12);
-    doc.setTextColor(40);
-    doc.text('Expense by Member', 14, y);
-    y += 2;
+    doc.setFontSize(12); doc.setTextColor(40);
+    doc.text('Expense by Member', 14, y); y += 2;
     autoTable(doc, {
       startY: y,
       head: [['Member', 'Amount']],
-      body: chartData.value.member.length
-        ? chartData.value.member.map(r => [r.member, fmt(r.total)])
-        : [['No data', '']],
+      body: chartData.value.member.length ? chartData.value.member.map(r => [r.member, fmt(r.total)]) : [['No data', '']],
       styles: { fontSize: 10 },
       headStyles: { fillColor: [13, 110, 253] },
       columnStyles: { 1: { halign: 'right' } },
@@ -348,21 +367,11 @@ async function exportPDF() {
     });
     y = (doc.lastAutoTable?.finalY ?? y) + 8;
 
-    // New page for annual data
-    doc.addPage();
-    y = 15;
+    doc.addPage(); y = 15;
 
-    // -- Income vs Expense --
-    doc.setFontSize(12);
-    doc.setTextColor(40);
-    doc.text('Income vs Expense - ' + selectedYear.value, 14, y);
-    y += 2;
-    const barRows = chartData.value.bar.map(r => [
-      r.month,
-      fmt(r.income),
-      fmt(r.expense),
-      fmt(r.income - r.expense),
-    ]);
+    doc.setFontSize(12); doc.setTextColor(40);
+    doc.text('Income vs Expense - ' + selectedYear.value, 14, y); y += 2;
+    const barRows = chartData.value.bar.map(r => [r.month, fmt(r.income), fmt(r.expense), fmt(r.income - r.expense)]);
     autoTable(doc, {
       startY: y,
       head: [['Month', 'Income', 'Expense', 'Net']],
@@ -371,27 +380,17 @@ async function exportPDF() {
       headStyles: { fillColor: [73, 80, 87] },
       columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
       margin: { left: 14, right: 14 },
-      foot: barRows.length ? [[
-        'Total',
-        fmt(chartData.value.bar.reduce((s, r) => s + r.income, 0)),
-        fmt(chartData.value.bar.reduce((s, r) => s + r.expense, 0)),
-        fmt(chartData.value.bar.reduce((s, r) => s + r.income - r.expense, 0)),
-      ]] : [],
+      foot: barRows.length ? [['Total', fmt(chartData.value.bar.reduce((s, r) => s + r.income, 0)), fmt(chartData.value.bar.reduce((s, r) => s + r.expense, 0)), fmt(chartData.value.bar.reduce((s, r) => s + r.income - r.expense, 0))]] : [],
       footStyles: { fillColor: [240, 240, 240], textColor: [40, 40, 40], fontStyle: 'bold' },
     });
     y = (doc.lastAutoTable?.finalY ?? y) + 8;
 
-    // -- Expense Trend --
-    doc.setFontSize(12);
-    doc.setTextColor(40);
-    doc.text('Expense Trend (Last 6 Months)', 14, y);
-    y += 2;
+    doc.setFontSize(12); doc.setTextColor(40);
+    doc.text('Expense Trend (Last 6 Months)', 14, y); y += 2;
     autoTable(doc, {
       startY: y,
       head: [['Month', 'Expense']],
-      body: chartData.value.line.length
-        ? chartData.value.line.map(r => [r.month, fmt(r.expense)])
-        : [['No data', '']],
+      body: chartData.value.line.length ? chartData.value.line.map(r => [r.month, fmt(r.expense)]) : [['No data', '']],
       styles: { fontSize: 10 },
       headStyles: { fillColor: [220, 53, 69] },
       columnStyles: { 1: { halign: 'right' } },
@@ -400,7 +399,6 @@ async function exportPDF() {
 
     const name = filename('pdf');
     try {
-      // 1. Modern Native File System API
       if (window.showSaveFilePicker) {
         const handle = await window.showSaveFilePicker({
           suggestedName: name,
@@ -416,7 +414,6 @@ async function exportPDF() {
       console.error('File Picker API failed, falling back...', err);
     }
 
-    // 2. Fallback: Base64 Data URI
     const encodedUri = doc.output('datauristring');
     const a = document.createElement('a');
     a.setAttribute('href', encodedUri);
@@ -432,6 +429,7 @@ async function exportPDF() {
   }
 }
 
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
 const { startTour, startAutoTour } = useTour('reports');
 
 onMounted(async () => {
@@ -443,6 +441,11 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // Destroy all chart instances to prevent memory leaks
+  if (pieInstance)    pieInstance.destroy();
+  if (memberInstance) memberInstance.destroy();
+  if (barInstance)    barInstance.destroy();
+  if (lineInstance)   lineInstance.destroy();
   window.removeEventListener('start-reports-tour', () => startTour(reportsTourSteps));
 });
 </script>
