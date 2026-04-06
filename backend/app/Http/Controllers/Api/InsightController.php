@@ -18,8 +18,10 @@ class InsightController extends Controller
 
         $insights = [
             'monthly_comparison' => $this->insightService->getMonthlyComparison($userId),
-            'top_spending_category' => $this->insightService->getTopSpendingCategories($userId),
-            'budget_risk_prediction' => $this->insightService->getBudgetRiskPrediction($userId),
+            'savings_rate' => $this->insightService->getSavingsRate($userId),
+            'expense_anomaly' => $this->insightService->getExpenseAnomaly($userId),
+            'highest_spending_day' => $this->insightService->getHighestSpendingDay($userId),
+            'weekend_vs_weekday' => $this->insightService->getWeekendVsWeekdaySpending($userId),
         ];
 
         // Filter out nulls to only return actionable insights
