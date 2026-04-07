@@ -148,8 +148,6 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { dashboardService } from '../services/dashboardService';
-import { insightService } from '../services/insightService';
-import { netWorthService } from '../services/netWorthService';
 import { formatRupiah } from '../utils/currency';
 import { useTour } from '../composables/useTour';
 import { dashboardTourSteps } from '../tours/dashboardTour';

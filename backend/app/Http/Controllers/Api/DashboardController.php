@@ -16,48 +16,6 @@ class DashboardController extends Controller
         private NetWorthService $netWorthService,
     ) {}
 
-    public function summary(Request $request)
-    {
-        $data = $this->dashboardService->getSummary(
-            $request->user()->id,
-            $request->input('month'),
-            $request->input('year')
-        );
-
-        return response()->json(['data' => $data]);
-    }
-
-    public function charts(Request $request, string $type)
-    {
-        $userId = $request->user()->id;
-
-        $data = match ($type) {
-            'expense-by-category' => $this->dashboardService->getExpenseByCategory(
-                $userId,
-                $request->input('month'),
-                $request->input('year'),
-                $request->input('member_id')
-            ),
-            'expense-by-member' => $this->dashboardService->getExpenseByMember(
-                $userId,
-                $request->input('month'),
-                $request->input('year'),
-                $request->input('member_id')
-            ),
-            'income-vs-expense' => $this->dashboardService->getIncomeVsExpense(
-                $userId,
-                $request->input('year')
-            ),
-            'expense-trend' => $this->dashboardService->getMonthlyExpenseTrend(
-                $userId,
-                $request->input('months', 6)
-            ),
-            default => abort(404, 'Chart type not found'),
-        };
-
-        return response()->json(['data' => $data]);
-    }
-
     /**
      * Unified full-dashboard endpoint — returns ALL dashboard data in one HTTP round trip.
      */

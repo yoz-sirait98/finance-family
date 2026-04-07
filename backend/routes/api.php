@@ -10,8 +10,6 @@ use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\RecurringTransactionController;
-use App\Http\Controllers\Api\NetWorthController;
-use App\Http\Controllers\Api\InsightController;
 
 /* |-------------------------------------------------------------------------- | API Routes — Family Finance Management System |-------------------------------------------------------------------------- | Base prefix: /api */
 
@@ -53,15 +51,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('recurring-transactions', RecurringTransactionController::class);
 
     // Dashboard
-    Route::get('/dashboard/summary', [DashboardController::class , 'summary']);
-    Route::get('/dashboard/charts/{type}', [DashboardController::class , 'charts']);
     Route::get('/dashboard/full', [DashboardController::class , 'full']);
     Route::get('/dashboard/reports', [DashboardController::class , 'reports']);
-
-    // Net Worth Tracking
-    Route::get('/net-worth/current', [NetWorthController::class , 'current']);
-    Route::get('/net-worth/history', [NetWorthController::class , 'history']);
-
-    // Financial Insights Engine
-    Route::get('/insights', [InsightController::class , 'index']);
 });
