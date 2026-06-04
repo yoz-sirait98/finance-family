@@ -158,7 +158,7 @@ class DashboardService
                 ->whereIn('type', ['income', 'expense'])
                 ->where('transfer_id', null)
                 ->whereYear('transaction_date', $year)
-                ->selectRaw('MONTH(transaction_date) as m, type, SUM(amount) as total')
+                ->selectRaw('EXTRACT(MONTH FROM transaction_date) as m, type, SUM(amount) as total')
                 ->groupBy('m', 'type')
                 ->get()
                 ->groupBy('m');
@@ -190,7 +190,7 @@ class DashboardService
                 ->where('type', 'expense')
                 ->where('transfer_id', null)
                 ->where('transaction_date', '>=', $start)
-                ->selectRaw('YEAR(transaction_date) as y, MONTH(transaction_date) as m, SUM(amount) as total')
+                ->selectRaw('EXTRACT(YEAR FROM transaction_date) as y, EXTRACT(MONTH FROM transaction_date) as m, SUM(amount) as total')
                 ->groupBy('y', 'm')
                 ->get()
                 ->keyBy(fn ($r) => $r->y . '-' . $r->m);

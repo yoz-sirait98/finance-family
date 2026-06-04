@@ -111,7 +111,7 @@ class InsightService
             $topDay = Transaction::where('user_id', $userId)
                 ->where('type', 'expense')
                 ->whereNull('transfer_id')
-                ->selectRaw('DAYNAME(transaction_date) as day, SUM(amount) as total')
+                ->selectRaw("TO_CHAR(transaction_date, 'Day') as day, SUM(amount) as total")
                 ->groupBy('day')
                 ->orderByDesc('total')
                 ->first();
@@ -131,8 +131,8 @@ class InsightService
                 ->where('type', 'expense')
                 ->whereNull('transfer_id')
                 ->selectRaw('
-                    SUM(CASE WHEN DAYOFWEEK(transaction_date) IN (1, 7) THEN amount ELSE 0 END) as weekend_total,
-                    SUM(CASE WHEN DAYOFWEEK(transaction_date) NOT IN (1, 7) THEN amount ELSE 0 END) as weekday_total
+                    SUM(CASE WHEN EXTRACT(DOW FROM transaction_date) IN (0, 6) THEN amount ELSE 0 END) as weekend_total,
+                    SUM(CASE WHEN EXTRACT(DOW FROM transaction_date) NOT IN (0, 6) THEN amount ELSE 0 END) as weekday_total
                 ')
                 ->first();
 

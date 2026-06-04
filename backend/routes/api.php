@@ -14,6 +14,10 @@ use App\Http\Controllers\Api\RecurringTransactionController;
 /* |-------------------------------------------------------------------------- | API Routes — Family Finance Management System |-------------------------------------------------------------------------- | Base prefix: /api */
 
 // Public routes
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok', 'timestamp' => now()->toIso8601String()]);
+});
+
 Route::post('/auth/register', [AuthController::class , 'register']);
 Route::post('/auth/login', [AuthController::class , 'login']);
 

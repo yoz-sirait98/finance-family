@@ -96,7 +96,13 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Supabase requires SSL — use 'require'. Override to 'prefer' for local dev if needed.
+            'sslmode' => env('DB_SSLMODE', 'require'),
+            // Disable prepared statements for Supabase Transaction Pooler (port 6543).
+            // Session Pooler (port 5432) and direct connections don't need this.
+            'options' => env('DB_DISABLE_PREPARES', false) ? [
+                PDO::ATTR_EMULATE_PREPARES => true,
+            ] : [],
         ],
 
         'sqlsrv' => [
