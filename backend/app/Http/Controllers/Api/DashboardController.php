@@ -25,23 +25,27 @@ class DashboardController extends Controller
         $month  = (int) ($request->input('month') ?? now()->month);
         $year   = (int) ($request->input('year')  ?? now()->year);
 
-        return response()->json([
-            'data' => [
-                'summary'            => $this->dashboardService->getSummary($userId, $month, $year),
-                'expense_by_category'=> $this->dashboardService->getExpenseByCategory($userId, $month, $year),
-                'income_vs_expense'  => $this->dashboardService->getIncomeVsExpense($userId, $year),
-                'expense_trend'      => $this->dashboardService->getMonthlyExpenseTrend($userId, 6),
-                'insights'           => array_values(array_filter([
-                    $this->insightService->getMonthlyComparison($userId),
-                    $this->insightService->getSavingsRate($userId),
-                    $this->insightService->getExpenseAnomaly($userId),
-                    $this->insightService->getHighestSpendingDay($userId),
-                    $this->insightService->getWeekendVsWeekdaySpending($userId),
-                ])),
-                'net_worth_current'  => $this->netWorthService->calculateCurrentNetWorth($userId),
-                'net_worth_history'  => $this->netWorthService->getHistory($userId),
-            ],
-        ]);
+        $responseData = [
+            'summary'            => $this->dashboardService->getSummary($userId, $month, $year),
+            'expense_by_category'=> $this->dashboardService->getExpenseByCategory($userId, $month, $year),
+            'income_vs_expense'  => $this->dashboardService->getIncomeVsExpense($userId, $year),
+            'expense_trend'      => $this->dashboardService->getMonthlyExpenseTrend($userId, 6),
+            'insights'           => array_values(array_filter([
+                $this->insightService->getMonthlyComparison($userId),
+                $this->insightService->getSavingsRate($userId),
+                $this->insightService->getExpenseAnomaly($userId),
+                $this->insightService->getHighestSpendingDay($userId),
+                $this->insightService->getWeekendVsWeekdaySpending($userId),
+            ])),
+            'net_worth_current'  => $this->netWorthService->calculateCurrentNetWorth($userId),
+            'net_worth_history'  => $this->netWorthService->getHistory($userId),
+        ];
+
+        $etag = md5(json_encode($responseData));
+        $response = response()->json(['data' => $responseData]);
+        $response->setEtag($etag);
+
+        return $response;
     }
 
     /**
@@ -55,24 +59,28 @@ class DashboardController extends Controller
         $year   = (int) ($request->input('year')  ?? now()->year);
         $memberId = $request->input('member_id') ? (int) $request->input('member_id') : null;
 
-        return response()->json([
-            'data' => [
-                'expense_by_category' => $this->dashboardService->getExpenseByCategory(
-                    $userId,
-                    $month,
-                    $year,
-                    $memberId
-                ),
-                'expense_by_member' => $this->dashboardService->getExpenseByMember(
-                    $userId,
-                    $month,
-                    $year,
-                    $memberId
-                ),
-                'income_vs_expense' => $this->dashboardService->getIncomeVsExpense($userId, $year),
-                'expense_trend'     => $this->dashboardService->getMonthlyExpenseTrend($userId, 6),
-            ],
-        ]);
+        $responseData = [
+            'expense_by_category' => $this->dashboardService->getExpenseByCategory(
+                $userId,
+                $month,
+                $year,
+                $memberId
+            ),
+            'expense_by_member' => $this->dashboardService->getExpenseByMember(
+                $userId,
+                $month,
+                $year,
+                $memberId
+            ),
+            'income_vs_expense' => $this->dashboardService->getIncomeVsExpense($userId, $year),
+            'expense_trend'     => $this->dashboardService->getMonthlyExpenseTrend($userId, 6),
+        ];
+
+        $etag = md5(json_encode($responseData));
+        $response = response()->json(['data' => $responseData]);
+        $response->setEtag($etag);
+
+        return $response;
     }
 }
 

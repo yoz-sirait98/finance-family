@@ -145,9 +145,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import Chart from 'chart.js/auto';
-import { dashboardService } from '../services/dashboardService';
+import { useDashboard } from '../composables/useDashboard';
 import { formatRupiah } from '../utils/currency';
 import { useTour } from '../composables/useTour';
 import { dashboardTourSteps } from '../tours/dashboardTour';
@@ -158,6 +158,8 @@ const showInsights = ref(false);
 // Filter state
 const selectedMonth = ref(now.getMonth() + 1);
 const selectedYear  = ref(now.getFullYear());
+
+const { data: dashboardData, isLoading, isError } = useDashboard(selectedMonth, selectedYear);
 
 const months = [
   { value: 1, label: 'January' }, { value: 2, label: 'February' },
@@ -189,21 +191,13 @@ const hasNetWorthData = ref(false);
 
 let pieInstance, barInstance, lineInstance, netWorthInstance;
 
-async function loadAll() {
-  // Destroy existing chart instances
+async function updateCharts(d) {
+  if (!d) return;
+
   if (pieInstance)  { pieInstance.destroy();  pieInstance  = null; }
   if (barInstance)  { barInstance.destroy();  barInstance  = null; }
   if (lineInstance) { lineInstance.destroy(); lineInstance = null; }
   if (netWorthInstance) { netWorthInstance.destroy(); netWorthInstance = null; }
-
-  // Single unified API call — replaces 7 separate HTTP requests
-  const res = await dashboardService.full({
-    month: selectedMonth.value,
-    year: selectedYear.value,
-  }).catch(() => null);
-
-  const d = res?.data?.data;
-  if (!d) return;
 
   // Summary
   summary.value = d.summary ?? summary.value;
@@ -276,8 +270,16 @@ async function loadAll() {
 
 const { startTour, startAutoTour } = useTour('dashboard');
 
+watch(dashboardData, (newData) => {
+  if (newData) {
+    updateCharts(newData);
+  }
+});
+
 onMounted(() => {
-  loadAll();
+  if (dashboardData.value) {
+    updateCharts(dashboardData.value);
+  }
   startAutoTour(dashboardTourSteps);
   window.addEventListener('start-dashboard-tour', () => startTour(dashboardTourSteps));
 });

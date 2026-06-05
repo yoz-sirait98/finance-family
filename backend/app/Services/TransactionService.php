@@ -52,11 +52,16 @@ class TransactionService
 
         $sortBy = $filters['sort_by'] ?? 'transaction_date';
         $sortDir = $filters['sort_dir'] ?? 'desc';
+        
         $query->orderBy($sortBy, $sortDir);
+        // Ensure deterministic ordering for cursor pagination
+        if ($sortBy !== 'id') {
+            $query->orderBy('id', $sortDir);
+        }
 
         $perPage = $filters['per_page'] ?? 15;
 
-        return $query->paginate($perPage);
+        return $query->cursorPaginate($perPage);
     }
 
     public function create(array $data): Transaction

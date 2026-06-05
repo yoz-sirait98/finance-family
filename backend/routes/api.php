@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\RecurringTransactionController;
+use App\Http\Controllers\Api\BootstrapController;
 
 /* |-------------------------------------------------------------------------- | API Routes — Family Finance Management System |-------------------------------------------------------------------------- | Base prefix: /api */
 
@@ -39,6 +40,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class , 'logout']);
     Route::get('/auth/profile', [AuthController::class , 'profile']);
     Route::put('/auth/password', [AuthController::class , 'changePassword']);
+
+    // Bootstrap
+    Route::get('/bootstrap', [BootstrapController::class, 'index']);
 
     // Members
     Route::apiResource('members', MemberController::class);
