@@ -11,21 +11,24 @@ class BudgetService
 {
     private const TTL = 300; // 5 minutes
 
+    private function versionKey(int $userId): string
+    {
+        return 'budget_v_' . $userId;
+    }
+
     private function cacheKey(int $userId, ?int $month = null, ?int $year = null, int $page = 1, int $perPage = 15): string
     {
-        return 'budget_' . $userId . '_' . ($month ?? 0) . '_' . ($year ?? 0) . '_' . $page . '_' . $perPage;
+        $version = Cache::get($this->versionKey($userId), 1);
+        return 'budget_' . $userId . '_v' . $version . '_' . ($month ?? 0) . '_' . ($year ?? 0) . '_' . $page . '_' . $perPage;
     }
 
     public function clearUserCache(int $userId): void
     {
-        foreach (range(1, 100) as $page) {
-            for ($month = 1; $month <= 12; $month++) {
-                $year = now()->year;
-                foreach (range($year - 2, $year + 2) as $y) {
-                    Cache::forget($this->cacheKey($userId, $month, $y, $page));
-                }
-            }
-        }
+        // Bump the version — all existing cache keys immediately become stale
+        // This avoids brute-force enumeration of thousands of keys (which caused 502s)
+        $versionKey = $this->versionKey($userId);
+        $current = Cache::get($versionKey, 1);
+        Cache::put($versionKey, $current + 1, now()->addDays(7));
     }
 
     public function __construct(
