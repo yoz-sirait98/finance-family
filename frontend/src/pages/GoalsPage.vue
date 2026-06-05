@@ -171,11 +171,17 @@ function openContribute(g) {
 async function save() {
   formError.value = '';
   try {
+    const payload = {
+      name: form.value.name,
+      target_amount: form.value.target_amount,
+      deadline: form.value.deadline || null,
+      account_id: form.value.account_id || null,
+    };
     if (editingId.value) {
-      await goalService.update(editingId.value, form.value);
+      await goalService.update(editingId.value, payload);
       toast.success('Goal updated successfully');
     } else {
-      await goalService.create(form.value);
+      await goalService.create(payload);
       toast.success('Goal created successfully');
     }
     showModal.value = false;

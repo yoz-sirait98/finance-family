@@ -28,7 +28,7 @@ class GoalController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'target_amount' => 'required|numeric|min:1',
-            'deadline' => 'nullable|date|after:today',
+            'deadline' => 'nullable|date',
             'account_id' => 'nullable|exists:accounts,id',
         ]);
 
