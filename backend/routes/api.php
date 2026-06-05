@@ -15,7 +15,18 @@ use App\Http\Controllers\Api\RecurringTransactionController;
 
 // Public routes
 Route::get('/health', function () {
-    return response()->json(['status' => 'ok', 'timestamp' => now()->toIso8601String()]);
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbStatus = 'connected';
+    } catch (\Exception $e) {
+        $dbStatus = 'error: ' . $e->getMessage();
+    }
+
+    return response()->json([
+        'status' => 'ok', 
+        'database' => $dbStatus,
+        'timestamp' => now()->toIso8601String()
+    ]);
 });
 
 Route::post('/auth/register', [AuthController::class , 'register']);
