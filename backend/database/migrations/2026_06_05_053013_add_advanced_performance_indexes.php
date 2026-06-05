@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,11 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->index(['user_id', 'account_id'], 'transactions_user_account');
-            $table->index(['user_id', 'type', 'transaction_date'], 'transactions_user_type_date');
-            $table->index(['member_id', 'transaction_date'], 'transactions_member_date');
-        });
+        DB::statement('CREATE INDEX IF NOT EXISTS transactions_user_account ON transactions (user_id, account_id)');
+        DB::statement('CREATE INDEX IF NOT EXISTS transactions_user_type_date ON transactions (user_id, type, transaction_date)');
+        DB::statement('CREATE INDEX IF NOT EXISTS transactions_member_date ON transactions (member_id, transaction_date)');
     }
 
     /**
@@ -23,10 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->dropIndex('transactions_user_account');
-            $table->dropIndex('transactions_user_type_date');
-            $table->dropIndex('transactions_member_date');
-        });
+        DB::statement('DROP INDEX IF EXISTS transactions_user_account');
+        DB::statement('DROP INDEX IF EXISTS transactions_user_type_date');
+        DB::statement('DROP INDEX IF EXISTS transactions_member_date');
     }
 };
