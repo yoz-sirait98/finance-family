@@ -112,7 +112,7 @@ class InsightService
                 ->where('type', 'expense')
                 ->whereNull('transfer_id')
                 ->selectRaw("TO_CHAR(transaction_date, 'Day') as day, SUM(amount) as total")
-                ->groupBy('day')
+                ->groupByRaw("TO_CHAR(transaction_date, 'Day')")
                 ->orderByDesc('total')
                 ->first();
 
