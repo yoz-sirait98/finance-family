@@ -49,8 +49,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/vendor
-          key: composer-${{ hashFiles('backend/composer.lock') }}
-          restore-keys: composer-
+          key: composer-dev-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-dev-
 
       - name: Install Composer dependencies
         working-directory: backend
