@@ -68,8 +68,11 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
-            <button type="submit" class="btn btn-primary-gradient">Save</button>
+            <button type="button" class="btn btn-secondary" :disabled="saving" @click="showModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary-gradient" :disabled="saving">
+              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
+              Save
+            </button>
           </div>
         </form>
       </div>
@@ -94,8 +97,11 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="showContributeModal = false">Cancel</button>
-            <button type="submit" class="btn btn-primary-gradient">Contribute</button>
+            <button type="button" class="btn btn-secondary" :disabled="saving" @click="showContributeModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary-gradient" :disabled="saving">
+              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
+              Contribute
+            </button>
           </div>
         </form>
       </div>
@@ -112,8 +118,11 @@
           <p class="mb-0">Are you sure you want to delete the goal <strong>{{ deletingItem?.name }}</strong>? This cannot be undone.</p>
         </div>
         <div class="modal-footer border-0 pt-0">
-          <button class="btn btn-secondary" @click="showDeleteModal = false">Cancel</button>
-          <button class="btn btn-danger" @click="doDelete">Delete</button>
+          <button class="btn btn-secondary" :disabled="deleting" @click="showDeleteModal = false">Cancel</button>
+          <button class="btn btn-danger" :disabled="deleting" @click="doDelete">
+            <span v-if="deleting" class="spinner-border spinner-border-sm me-1"></span>
+            Delete
+          </button>
         </div>
       </div>
     </div>
@@ -143,6 +152,9 @@ const contributeForm = ref({ amount: 0, note: '' });
 const deletingItem = ref(null);
 const toast = useToastStore();
 
+const saving = ref(false);
+const deleting = ref(false);
+
 async function fetchData() {
   const { data } = await goalService.list();
   goals.value = data.data;
@@ -170,6 +182,7 @@ function openContribute(g) {
 
 async function save() {
   formError.value = '';
+  saving.value = true;
   try {
     const payload = {
       name: form.value.name,
@@ -189,10 +202,13 @@ async function save() {
   } catch(e) {
     formError.value = e.response?.data?.message || 'Error occurred';
     toast.error(formError.value);
+  } finally {
+    saving.value = false;
   }
 }
 
 async function doContribute() {
+  saving.value = true;
   try {
     await goalService.contribute(contributingGoal.value.id, contributeForm.value);
     toast.success('Contribution added successfully');
@@ -200,6 +216,8 @@ async function doContribute() {
     fetchData();
   } catch(e) {
     toast.error(e.response?.data?.message || 'Error contributing');
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -210,6 +228,7 @@ function confirmDelete(g) {
 
 async function doDelete() {
   if (!deletingItem.value) return;
+  deleting.value = true;
   try {
     await goalService.delete(deletingItem.value.id);
     toast.success('Goal deleted successfully');
@@ -218,6 +237,8 @@ async function doDelete() {
     fetchData();
   } catch(e) {
     toast.error(e.response?.data?.message || 'Failed to delete goal');
+  } finally {
+    deleting.value = false;
   }
 }
 
