@@ -42,12 +42,12 @@ jobs:
       - name: Build project
         working-directory: frontend
         env:
-          VITE_API_URL: "https://yjsfinance.my.id/api"
+          VITE_API_URL: "https://yjsfinance.web.id/api"
         run: npm run build
 
       - name: Configure Custom Domain
         working-directory: frontend
-        run: echo "yjsfinance.web.id" > dist/CNAME
+        run: echo "yjsfinance.my.id" > dist/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
