@@ -1,7 +1,8 @@
+version: "1"
 services:
   - type: web
     name: finance-family-api
-    env: docker
+    runtime: docker
     region: singapore
     plan: free
     dockerContext: ./backend
