@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS "accounts" (
                          CHECK ("type" IN ('bank','cash','ewallet')),
     "balance"         NUMERIC(16,2) NOT NULL DEFAULT 0,
     "initial_balance" NUMERIC(16,2) NOT NULL DEFAULT 0,
+    "icon"            VARCHAR(255),
     "is_active"       BOOLEAN NOT NULL DEFAULT TRUE,
     "created_at"      TIMESTAMP(0) WITHOUT TIME ZONE,
     "updated_at"      TIMESTAMP(0) WITHOUT TIME ZONE
@@ -249,12 +250,13 @@ CREATE INDEX IF NOT EXISTS "activity_logs_entity_type_entity_id_index" ON "activ
 
 -- ── 17. net_worth_histories ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "net_worth_histories" (
-    "id"          BIGSERIAL PRIMARY KEY,
-    "user_id"     BIGINT NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
-    "net_worth"   NUMERIC(16,2) NOT NULL,
-    "recorded_at" DATE NOT NULL,
-    "created_at"  TIMESTAMP(0) WITHOUT TIME ZONE,
-    "updated_at"  TIMESTAMP(0) WITHOUT TIME ZONE
+    "id"            BIGSERIAL PRIMARY KEY,
+    "user_id"       BIGINT NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
+    "total_balance" NUMERIC(16,2) NOT NULL DEFAULT 0,
+    "recorded_at"   DATE NOT NULL,
+    "created_at"    TIMESTAMP(0) WITHOUT TIME ZONE,
+    "updated_at"    TIMESTAMP(0) WITHOUT TIME ZONE,
+    UNIQUE ("user_id", "recorded_at")
 );
 
 -- ── 18. Performance indexes ───────────────────────────────────────────────────
